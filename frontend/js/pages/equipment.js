@@ -86,8 +86,8 @@ function editEquipment(id) {
 }
 
 function saveEquipment() {
-    var id = document.getElementById('equipmentEditId').value;
-    var name = document.getElementById('eName').value.trim();
+    var id = getEquipmentFormControl('equipmentEditId').value;
+    var name = getEquipmentFormControl('eName').value.trim();
     
     if (!name) {
         showToast('خطا', 'نام تجهیزات الزامی است', 'error');
@@ -96,11 +96,11 @@ function saveEquipment() {
     
     var data = {
         name: name,
-        category: document.getElementById('eCategory').value,
-        quantity: parseInt(document.getElementById('eQuantity').value) || 1,
-        status: document.getElementById('eStatus').value,
-        location: document.getElementById('eLocation').value,
-        notes: document.getElementById('eNotes').value
+        category: getEquipmentFormControl('eCategory').value,
+        quantity: parseInt(getEquipmentFormControl('eQuantity').value) || 1,
+        status: getEquipmentFormControl('eStatus').value,
+        location: getEquipmentFormControl('eLocation').value,
+        notes: getEquipmentFormControl('eNotes').value
     };
     
     var bridge = getBridge();
@@ -113,9 +113,10 @@ function saveEquipment() {
     
     promise.then(function(result) {
         if (result.success) {
-            bootstrap.Modal.getInstance(document.getElementById('equipmentModal')).hide();
-            renderEquipment();
-            updateDashboard();
+            navigate('equipment').then(function() {
+                renderEquipment();
+                updateDashboard();
+            });
             showToast('موفق', id ? 'تجهیزات ویرایش شد' : 'تجهیزات جدید اضافه شد');
         } else {
             showToast('خطا', result.message || 'خطا در ذخیره', 'error');
@@ -138,6 +139,35 @@ function deleteEquipment(id) {
             }
         });
     }
+}
+
+function openEquipmentModal(data) {
+    data = data || null;
+    navigate('equipment-form').then(function() {
+        var form = document.getElementById('equipmentPageForm');
+        if (!form) return;
+        form.reset();
+        getEquipmentFormControl('equipmentEditId').value = '';
+        document.getElementById('equipmentFormTitle').textContent = data ? 'ویرایش تجهیزات' : 'افزودن تجهیزات جدید';
+        document.getElementById('equipmentFormKicker').textContent = data ? 'EQUIPMENT DETAILS' : 'EQUIPMENT INVENTORY';
+        document.getElementById('equipmentFormSubtitle').textContent = data ? 'جزئیات این مورد را بررسی و تغییرات مورد نیاز را ذخیره کنید.' : 'مشخصات و وضعیت عملیاتی تجهیزات باشگاه را ثبت کنید.';
+        if (data) {
+            getEquipmentFormControl('equipmentEditId').value = data.id;
+            getEquipmentFormControl('eName').value = data.name || '';
+            getEquipmentFormControl('eCategory').value = data.category || 'سایر';
+            getEquipmentFormControl('eQuantity').value = data.quantity || 1;
+            getEquipmentFormControl('eStatus').value = data.status || 'Active';
+            getEquipmentFormControl('eLocation').value = data.location || '';
+            getEquipmentFormControl('eNotes').value = data.notes || '';
+        } else {
+            getEquipmentFormControl('eQuantity').value = 1;
+            getEquipmentFormControl('eStatus').value = 'Active';
+        }
+    });
+}
+
+function getEquipmentFormControl(id) {
+    return document.querySelector('#page-equipment-form [id="' + id + '"]');
 }
 
 function deleteEquipment(id) {

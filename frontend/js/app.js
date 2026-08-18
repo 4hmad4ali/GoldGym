@@ -76,6 +76,8 @@ var App = {
     data: {
         members: [],
         payments: [],
+        expenses: [],
+        expenseCategories: [],
         attendance: [],
         trainers: [],
         staff: [],
@@ -94,6 +96,7 @@ var App = {
     nextIds: {
         member: 1,
         payment: 1,
+        expense: 1,
         trainer: 1,
         staff: 1,
         equipment: 1,
@@ -185,6 +188,12 @@ function createMockBridge() {
         },
         get_gym_logo: function() { return App.data.settings.logo || null; },
         get_gym_signature: function() { return App.data.settings.signature || null; },
+        get_person_photo: function(code, type) {
+            var items = type === 'trainer' ? App.data.trainers : type === 'staff' ? App.data.staff : App.data.members;
+            var key = type === 'trainer' ? 'trainer_code' : type === 'staff' ? 'staff_code' : 'member_code';
+            var person = items.find(function(item) { return item[key] === code; });
+            return person && person.photo_base64 ? person.photo_base64 : null;
+        },
         upload_gym_logo: function(base64) {
             App.data.settings.logo = base64;
             return { success: true };
@@ -303,6 +312,14 @@ function createMockBridge() {
             }
             return data;
         },
+        get_expenses: function(search) { return App.data.expenses.filter(function(item) { return !search || item.title.indexOf(search) >= 0; }); },
+        add_expense: function(data) { var item = { id: App.nextIds.expense++, ...data }; App.data.expenses.push(item); return { success: true, id: item.id }; },
+        update_expense: function(id, data) { var item = App.data.expenses.find(function(entry) { return entry.id === id; }); if (!item) return { success: false }; Object.assign(item, data); return { success: true }; },
+        delete_expense: function(id) { App.data.expenses = App.data.expenses.filter(function(item) { return item.id !== id; }); return { success: true }; },
+        get_expense_categories: function() { return App.data.expenseCategories; },
+        add_expense_category: function(name) { var item = { id: App.data.expenseCategories.length + 1, name: name }; App.data.expenseCategories.push(item); return { success: true, id: item.id }; },
+        delete_expense_category: function(id) { App.data.expenseCategories = App.data.expenseCategories.filter(function(item) { return item.id !== id; }); return { success: true }; },
+        get_expense_stats: function() { var total = App.data.expenses.reduce(function(sum, item) { return sum + (item.amount || 0); }, 0); return { daily: 0, monthly: 0, total: total }; },
         get_trainers: function(search) { return App.data.trainers; },
         get_trainer_by_code: function(code) {
             for (var i = 0; i < App.data.trainers.length; i++) {
@@ -545,6 +562,9 @@ function createMockBridge() {
         export_report: function(type, format) {
             return { success: true, data: 'name,code\nTest,001\n' };
         },
+        save_report_csv: function(type) {
+            return { success: true, path: 'user_data/reports/report_' + type + '.csv' };
+        },
         get_today_attendance: function() {
             var todayStr = new Date().toISOString().split('T')[0];
             return App.data.attendance
@@ -703,6 +723,7 @@ function refreshPage(page) {
     if (page === 'dashboard' && typeof updateDashboard === 'function') updateDashboard();
     if (page === 'members' && typeof renderMembers === 'function') renderMembers();
     if (page === 'payments' && typeof renderPayments === 'function') renderPayments();
+    if (page === 'expenses' && typeof renderExpenses === 'function') renderExpenses();
     if (page === 'attendance' && typeof renderAttendance === 'function') renderAttendance();
     if (page === 'coaches' && typeof renderTrainers === 'function') renderTrainers();
     if (page === 'coaches' && typeof renderStaff === 'function') renderStaff();
@@ -772,7 +793,7 @@ function updateAll() {
         seedSampleData();
     }
     
-    var loadedPageNames = ['dashboard', 'members', 'payments', 'attendance', 'coaches', 'equipment', 'notifications', 'reports', 'cards'];
+    var loadedPageNames = ['dashboard', 'members', 'payments', 'expenses', 'attendance', 'coaches', 'equipment', 'notifications', 'reports', 'cards'];
     for (var i = 0; i < loadedPageNames.length; i++) {
         if (document.getElementById('page-' + loadedPageNames[i])) refreshPage(loadedPageNames[i]);
     }
@@ -846,6 +867,40 @@ function seedSampleData() {
 }
 
 // ─── INIT ──────────────────────────────────────────────────────
+function setPersonPhotoPreview(previewId, base64Image) {
+    var preview = document.getElementById(previewId);
+    if (!preview) return;
+    preview.innerHTML = base64Image ? '<img src="data:image/png;base64,' + base64Image + '" alt="portrait">' : '<i class="fas fa-user"></i>';
+}
+
+function clearPersonPhoto(inputId, previewId) {
+    var input = document.getElementById(inputId);
+    if (input) {
+        input.value = '';
+        delete input.dataset.photoBase64;
+    }
+    setPersonPhotoPreview(previewId, null);
+}
+
+function preparePersonPhoto(input, previewId) {
+    var file = input && input.files && input.files[0];
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 5 * 1024 * 1024) {
+        input.value = '';
+        delete input.dataset.photoBase64;
+        showToast('خطا', 'تصویر باید PNG، JPG یا WEBP و حداکثر ۵ مگابایت باشد.', 'error');
+        return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(event) {
+        var dataUrl = event.target.result || '';
+        input.dataset.photoBase64 = dataUrl.split(',', 2)[1] || '';
+        var preview = document.getElementById(previewId);
+        if (preview) preview.innerHTML = '<img src="' + dataUrl + '" alt="portrait">';
+    };
+    reader.readAsDataURL(file);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🏋 Golden Gym v4.0 loaded successfully');
     ThemeManager.load();
@@ -890,6 +945,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Add the expenses destination beside income operations.
+    var paymentsNavItem = document.querySelector('.sidebar .nav-item[data-page="payments"]');
+    if (paymentsNavItem && !document.querySelector('.sidebar .nav-item[data-page="expenses"]')) {
+        var expensesNavItem = document.createElement('div');
+        expensesNavItem.className = 'nav-item';
+        expensesNavItem.dataset.page = 'expenses';
+        expensesNavItem.innerHTML = '<i class="fas fa-receipt"></i><span>هزینه‌ها</span>';
+        paymentsNavItem.insertAdjacentElement('afterend', expensesNavItem);
+    }
+
     // Setup sidebar navigation
     var navItems = document.querySelectorAll('.sidebar .nav-item[data-page]');
     for (var i = 0; i < navItems.length; i++) {

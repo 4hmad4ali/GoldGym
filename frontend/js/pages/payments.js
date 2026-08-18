@@ -26,12 +26,13 @@ function renderPayments() {
         }
         
         body.innerHTML = payments.map(function(p) {
-            var memberName = escapePaymentText(p.member_name || p.member_code || '-');
+            var isDailyPayment = p.payment_type === 'daily';
+            var memberName = escapePaymentText(p.visitor_name || (isDailyPayment ? 'عضو روزانه' : p.member_name || p.member_code || '-'));
             var receipt = escapePaymentText(p.receipt_number || '—');
             var method = escapePaymentText(p.payment_method || 'ثبت‌نشده');
             return '<tr>' +
                 '<td><span class="payment-receipt"><i class="fas fa-receipt"></i>' + receipt + '</span></td>' +
-                '<td><div class="payment-member"><span class="payment-member__avatar">' + paymentInitials(p.member_name || p.member_code || 'ع') + '</span><strong>' + memberName + '</strong></div></td>' +
+                '<td><div class="payment-member"><span class="payment-member__avatar">' + paymentInitials(p.visitor_name || p.member_name || p.member_code || 'ع') + '</span><strong>' + memberName + (isDailyPayment ? '<small class="payment-daily-tag">روزانه</small>' : '') + '</strong></div></td>' +
                 '<td><span class="payment-amount">' + Number(p.amount || 0).toLocaleString() + '<small>AFN</small></span></td>' +
                 '<td><span class="payment-method"><i class="fas fa-credit-card"></i>' + method + '</span></td>' +
                 '<td><span class="payment-date"><i class="far fa-calendar"></i>' + escapePaymentText(p.payment_date || '-') + '</span></td>' +
@@ -99,25 +100,28 @@ function editPayment(id) {
 }
 
 function savePayment() {
-    var id = document.getElementById('paymentEditId').value;
-    var memberId = document.getElementById('pMember').value;
-    var amount = parseFloat(document.getElementById('pAmount').value);
-    var method = document.getElementById('pMethod').value;
-    var date = document.getElementById('pDate').value;
-    var notes = document.getElementById('pNotes').value;
+    var id = getPaymentFormControl('paymentEditId').value;
+    var paymentType = getPaymentFormControl('pPaymentType').value;
+    var memberId = getPaymentFormControl('pMember').value;
+    var visitorName = getPaymentFormControl('pDailyVisitor').value.trim();
+    var amount = parseFloat(getPaymentFormControl('pAmount').value);
+    var method = getPaymentFormControl('pMethod').value;
+    var date = getPaymentFormControl('pDate').value;
+    var notes = getPaymentFormControl('pNotes').value;
     
-    if (!memberId || !amount) {
+    if ((!memberId && paymentType !== 'daily') || !amount) {
         showToast('خطا', 'عضو و مبلغ الزامی است', 'error');
         return;
     }
     
     var data = {
-        member_id: parseInt(memberId),
+        member_id: paymentType === 'daily' ? null : parseInt(memberId),
         amount: amount,
         payment_method: method,
         payment_date: date,
         notes: notes,
-        payment_type: 'member'
+        payment_type: paymentType,
+        visitor_name: paymentType === 'daily' ? visitorName : ''
     };
     
     var bridge = getBridge();
@@ -130,9 +134,10 @@ function savePayment() {
     
     promise.then(function(result) {
         if (result.success) {
-            bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
-            renderPayments();
-            updateDashboard();
+            navigate('payments').then(function() {
+                renderPayments();
+                updateDashboard();
+            });
             showToast('موفق', id ? 'پرداخت ویرایش شد' : 'پرداخت جدید ثبت شد');
         } else {
             showToast('خطا', result.message || 'خطا در ذخیره', 'error');
@@ -155,6 +160,55 @@ function deletePayment(id) {
             }
         });
     }
+}
+
+function togglePaymentPersonFields() {
+    var type = getPaymentFormControl('pPaymentType');
+    var memberField = getPaymentFormControl('pMemberField');
+    var visitorField = getPaymentFormControl('pDailyVisitorField');
+    var member = getPaymentFormControl('pMember');
+    if (!type || !memberField || !visitorField || !member) return;
+    var isDaily = type.value === 'daily';
+    memberField.hidden = isDaily;
+    visitorField.hidden = !isDaily;
+    member.required = !isDaily;
+    if (isDaily) member.value = '';
+}
+
+function openPaymentModal(data) {
+    data = data || null;
+    navigate('payment-form').then(function() {
+        var form = document.getElementById('paymentPageForm');
+        if (!form) return;
+        form.reset();
+        var select = getPaymentFormControl('pMember');
+        getPaymentFormControl('paymentEditId').value = '';
+        document.getElementById('paymentFormTitle').textContent = data ? 'ویرایش پرداخت' : 'ثبت پرداخت جدید';
+        document.getElementById('paymentFormKicker').textContent = data ? 'PAYMENT DETAILS' : 'PAYMENT REGISTER';
+        document.getElementById('paymentFormSubtitle').textContent = data ? 'جزئیات این پرداخت را بررسی و تغییرات را ذخیره کنید.' : 'دریافتی عضو را ثبت کنید تا در گزارش‌های مالی باشگاه نمایش داده شود.';
+        getBridge().get_members('', 'All').then(function(members) {
+            select.innerHTML = '<option value="">-- انتخاب عضو --</option>' + members.map(function(member) {
+                return '<option value="' + member.id + '">' + escapePaymentText(member.full_name) + ' (' + escapePaymentText(member.member_code) + ')</option>';
+            }).join('');
+            if (data) {
+                getPaymentFormControl('paymentEditId').value = data.id;
+                getPaymentFormControl('pPaymentType').value = data.payment_type || 'member';
+                select.value = data.member_id || '';
+                getPaymentFormControl('pDailyVisitor').value = data.visitor_name || '';
+                getPaymentFormControl('pAmount').value = data.amount || '';
+                getPaymentFormControl('pMethod').value = data.payment_method || 'نقدی';
+                getPaymentFormControl('pDate').value = data.payment_date || '';
+                getPaymentFormControl('pNotes').value = data.notes || '';
+            } else {
+                getPaymentFormControl('pDate').value = new Date().toISOString().split('T')[0];
+            }
+            togglePaymentPersonFields();
+        });
+    });
+}
+
+function getPaymentFormControl(id) {
+    return document.querySelector('#page-payment-form [id="' + id + '"]');
 }
 
 function deletePayment(id) {

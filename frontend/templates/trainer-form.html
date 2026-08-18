@@ -10,6 +10,10 @@
     </div>
     <form id="trainerPageForm" class="team-form" onsubmit="event.preventDefault(); saveTrainer();">
         <input type="hidden" id="trainerEditId">
+        <section class="team-form-card person-photo-card">
+            <div class="team-form-card__heading"><span><i class="fas fa-camera"></i></span><div><h2>تصویر مربی</h2><p>تصویر چهره برای کارت هویت مربی استفاده می‌شود.</p></div></div>
+            <div class="person-photo-upload"><div class="person-photo-preview" id="tPhotoPreview"><i class="fas fa-user"></i></div><div><label class="form-label" for="tPhoto">انتخاب تصویر</label><input type="file" class="form-control-gold person-photo-input" id="tPhoto" accept="image/png,image/jpeg,image/webp" onchange="preparePersonPhoto(this, 'tPhotoPreview')"><small>PNG، JPG یا WEBP — حداکثر 5 مگابایت</small></div></div>
+        </section>
         <section class="team-form-card">
             <div class="team-form-card__heading"><span><i class="fas fa-dumbbell"></i></span><div><h2>اطلاعات مربی</h2><p>مشخصات شخصی و زمینه تخصصی مربی را وارد کنید.</p></div></div>
             <div class="team-form-grid form-gold">

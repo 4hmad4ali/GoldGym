@@ -4,3 +4,4 @@ qrcode[pil]>=7.4
 PyQt6>=6.5.0
 PyQt6-WebEngine>=6.5.0
 pyzbar>=0.1.9
+pywin32>=306; platform_system == "Windows"

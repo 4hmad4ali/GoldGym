@@ -4,7 +4,9 @@
  */
 
 function generateReport() {
-    var type = document.getElementById('reportType').value;
+    var reportSelect = document.getElementById('reportType');
+    if (reportSelect && !reportSelect.querySelector('option[value="expenses"]')) reportSelect.insertAdjacentHTML('beforeend', '<option value="expenses">گزارش هزینه‌ها</option>');
+    var type = reportSelect.value;
     var bridge = getBridge();
     var thead = document.getElementById('reportHead');
     var tbody = document.getElementById('reportBody');
@@ -82,6 +84,7 @@ function getReportMeta(type) {
         equipment: { title: 'گزارش تجهیزات', description: 'موجودی، محل و وضعیت عملیاتی تجهیزات' },
         expiring: { title: 'گزارش عضویت‌های در آستانه انقضا', description: 'اعضایی که نیاز به پیگیری و تمدید دارند' }
     };
+    reports.expenses = { title: 'گزارش هزینه‌ها', description: 'فهرست هزینه‌های ثبت‌شده و دسته‌بندی‌های آن‌ها' };
     return reports[type] || reports.members;
 }
 
@@ -104,17 +107,11 @@ function exportReportCSV() {
         return;
     }
     
-    var headers = window._reportData.headers;
-    var rows = window._reportData.rows;
-    var csv = headers.join(',') + '\n';
-    rows.forEach(function(row) {
-        csv += row.map(function(cell) { return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(',') + '\n';
+    var type = document.getElementById('reportType').value;
+    getBridge().save_report_csv(type).then(function(result) {
+        if (!result || !result.success) throw new Error((result && result.message) || 'ذخیره فایل انجام نشد');
+        showToast('موفق', 'فایل CSV ذخیره شد: ' + result.path);
+    })['catch'](function(error) {
+        showToast('خطا', 'خروجی CSV انجام نشد: ' + error.message, 'error');
     });
-    
-    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    var link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'report_' + document.getElementById('reportType').value + '_' + new Date().toISOString().split('T')[0] + '.csv';
-    link.click();
-    showToast('موفق', 'گزارش با موفقیت ذخیره شد');
 }

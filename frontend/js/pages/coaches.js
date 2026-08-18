@@ -132,7 +132,8 @@ function saveTrainer() {
         status: getTeamFormControl('trainer-form', 'tStatus').value,
         salary: parseFloat(getTeamFormControl('trainer-form', 'tSalary').value) || 0,
         hire_date: getTeamFormControl('trainer-form', 'tHireDate').value,
-        notes: getTeamFormControl('trainer-form', 'tNotes').value
+        notes: getTeamFormControl('trainer-form', 'tNotes').value,
+        photo_base64: getTeamFormControl('trainer-form', 'tPhoto').dataset.photoBase64 || ''
     };
     
     var bridge = getBridge();
@@ -223,7 +224,8 @@ function saveStaff() {
         status: getTeamFormControl('staff-form', 'sStatus').value,
         salary: parseFloat(getTeamFormControl('staff-form', 'sSalary').value) || 0,
         hire_date: getTeamFormControl('staff-form', 'sHireDate').value,
-        notes: getTeamFormControl('staff-form', 'sNotes').value
+        notes: getTeamFormControl('staff-form', 'sNotes').value,
+        photo_base64: getTeamFormControl('staff-form', 'sPhoto').dataset.photoBase64 || ''
     };
     
     var bridge = getBridge();
@@ -303,6 +305,7 @@ function openTrainerModal(data) {
         var form = document.getElementById('trainerPageForm');
         if (!form) return;
         form.reset();
+        clearPersonPhoto('tPhoto', 'tPhotoPreview');
         getTeamFormControl('trainer-form', 'trainerEditId').value = '';
         document.getElementById('trainerFormTitle').textContent = data ? 'ویرایش مربی' : 'افزودن مربی جدید';
         document.getElementById('trainerFormKicker').textContent = data ? 'TRAINER PROFILE' : 'NEW TRAINER PROFILE';
@@ -317,6 +320,9 @@ function openTrainerModal(data) {
             getTeamFormControl('trainer-form', 'tSalary').value = data.salary || '';
             getTeamFormControl('trainer-form', 'tHireDate').value = data.hire_date || '';
             getTeamFormControl('trainer-form', 'tNotes').value = data.notes || '';
+            getBridge().get_person_photo(data.trainer_code, 'trainer').then(function(photo) {
+                if (photo) setPersonPhotoPreview('tPhotoPreview', photo);
+            });
         } else {
             getTeamFormControl('trainer-form', 'tHireDate').value = new Date().toISOString().split('T')[0];
         }
@@ -329,6 +335,7 @@ function openStaffModal(data) {
         var form = document.getElementById('staffPageForm');
         if (!form) return;
         form.reset();
+        clearPersonPhoto('sPhoto', 'sPhotoPreview');
         getTeamFormControl('staff-form', 'staffEditId').value = '';
         document.getElementById('staffFormTitle').textContent = data ? 'ویرایش کارمند' : 'افزودن کارمند جدید';
         document.getElementById('staffFormKicker').textContent = data ? 'STAFF PROFILE' : 'NEW STAFF PROFILE';
@@ -343,6 +350,9 @@ function openStaffModal(data) {
             getTeamFormControl('staff-form', 'sSalary').value = data.salary || '';
             getTeamFormControl('staff-form', 'sHireDate').value = data.hire_date || '';
             getTeamFormControl('staff-form', 'sNotes').value = data.notes || '';
+            getBridge().get_person_photo(data.staff_code, 'staff').then(function(photo) {
+                if (photo) setPersonPhotoPreview('sPhotoPreview', photo);
+            });
         } else {
             getTeamFormControl('staff-form', 'sHireDate').value = new Date().toISOString().split('T')[0];
         }

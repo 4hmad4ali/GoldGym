@@ -131,8 +131,26 @@ def init_db():
         plan_id INTEGER REFERENCES membership_plans(id),
         receipt_number TEXT,
         payment_type TEXT DEFAULT 'member',
+        visitor_name TEXT,
         notes TEXT,
         created_by INTEGER REFERENCES users(id),
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS expense_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER REFERENCES expense_categories(id) ON DELETE SET NULL,
+        title TEXT NOT NULL,
+        amount REAL NOT NULL,
+        expense_date TEXT DEFAULT (date('now')),
+        payment_method TEXT DEFAULT 'نقدی',
+        notes TEXT,
         created_at TEXT DEFAULT (datetime('now'))
     );
     
@@ -186,10 +204,17 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_members_code ON members(member_code);
     CREATE INDEX IF NOT EXISTS idx_members_status ON members(status);
     CREATE INDEX IF NOT EXISTS idx_payments_member ON payments(member_id);
+    CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
     CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id, user_type);
     CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(check_in);
     CREATE INDEX IF NOT EXISTS idx_activities_created ON activities(created_at);
     """)
+
+    # Existing installations already have the payments table, so add the
+    # walk-in visitor field without requiring a database reset.
+    payment_columns = {row[1] for row in c.execute("PRAGMA table_info(payments)").fetchall()}
+    if 'visitor_name' not in payment_columns:
+        c.execute("ALTER TABLE payments ADD COLUMN visitor_name TEXT")
     
     # Admin user
     c.execute("SELECT id FROM users WHERE username='admin'")
@@ -225,6 +250,9 @@ def init_db():
     ]
     for key, value in default_settings:
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
+
+    default_expense_categories = ['اجاره', 'برق و آب', 'حقوق کارکنان', 'تعمیرات', 'لوازم و مواد مصرفی', 'بازاریابی', 'سایر']
+    c.executemany("INSERT OR IGNORE INTO expense_categories (name) VALUES (?)", [(name,) for name in default_expense_categories])
     
     conn.commit()
     conn.close()
@@ -311,10 +339,10 @@ def add_member(data):
     c.execute("""INSERT INTO members 
         (member_code, full_name, father_name, phone, email, address, gender, 
          blood_group, date_of_birth, join_date, expiry_date, membership_type, 
-         status, emergency_contact, notes, qr_code_data)
+         status, photo_path, emergency_contact, notes, qr_code_data)
         VALUES (:member_code, :full_name, :father_name, :phone, :email, :address, :gender,
          :blood_group, :date_of_birth, :join_date, :expiry_date, :membership_type,
-         :status, :emergency_contact, :notes, :qr)""",
+         :status, :photo_path, :emergency_contact, :notes, :qr)""",
         {**data, 'qr': qr})
     conn.commit()
     lid = c.lastrowid
@@ -336,7 +364,7 @@ def update_member(mid, data):
         full_name=:full_name, father_name=:father_name, phone=:phone, email=:email, 
         address=:address, gender=:gender, blood_group=:blood_group, 
         date_of_birth=:date_of_birth, expiry_date=:expiry_date,
-        membership_type=:membership_type, status=:status, 
+        membership_type=:membership_type, status=:status, photo_path=:photo_path,
         emergency_contact=:emergency_contact, notes=:notes, qr_code_data=:qr 
         WHERE id=:id""",
         params)
@@ -420,9 +448,9 @@ def add_staff(data):
     qr = f"GGYM-STF|{data['staff_code']}|{data['full_name']}|{data.get('status', 'Active')}|"
     c.execute("""INSERT INTO staff 
         (staff_code, full_name, father_name, phone, email, address, gender,
-         blood_group, date_of_birth, hire_date, position, salary, status, notes, qr_code_data)
+         blood_group, date_of_birth, hire_date, position, salary, status, photo_path, notes, qr_code_data)
         VALUES (:staff_code, :full_name, :father_name, :phone, :email, :address, :gender,
-         :blood_group, :date_of_birth, :hire_date, :position, :salary, :status, :notes, :qr)""",
+         :blood_group, :date_of_birth, :hire_date, :position, :salary, :status, :photo_path, :notes, :qr)""",
         {**data, 'qr': qr})
     conn.commit()
     lid = c.lastrowid
@@ -443,7 +471,7 @@ def update_staff(sid, data):
         full_name=:full_name, father_name=:father_name, phone=:phone, email=:email,
         address=:address, gender=:gender, blood_group=:blood_group,
         date_of_birth=:date_of_birth, position=:position, salary=:salary,
-        status=:status, notes=:notes, qr_code_data=:qr
+        status=:status, photo_path=:photo_path, notes=:notes, qr_code_data=:qr
         WHERE id=:id""",
         params)
     conn.commit()
@@ -520,9 +548,9 @@ def add_trainer(data):
     qr = f"GGYM-TRN|{data['trainer_code']}|{data['full_name']}|{data.get('status', 'Active')}|"
     c.execute("""INSERT INTO trainers 
         (trainer_code, full_name, father_name, phone, email, address, gender,
-         blood_group, date_of_birth, hire_date, specialization, salary, status, notes, qr_code_data)
+         blood_group, date_of_birth, hire_date, specialization, salary, status, photo_path, notes, qr_code_data)
         VALUES (:trainer_code, :full_name, :father_name, :phone, :email, :address, :gender,
-         :blood_group, :date_of_birth, :hire_date, :specialization, :salary, :status, :notes, :qr)""",
+         :blood_group, :date_of_birth, :hire_date, :specialization, :salary, :status, :photo_path, :notes, :qr)""",
         {**data, 'qr': qr})
     conn.commit()
     lid = c.lastrowid
@@ -543,7 +571,7 @@ def update_trainer(tid, data):
         full_name=:full_name, father_name=:father_name, phone=:phone, email=:email,
         address=:address, gender=:gender, blood_group=:blood_group,
         date_of_birth=:date_of_birth, specialization=:specialization,
-        salary=:salary, status=:status, notes=:notes, qr_code_data=:qr
+        salary=:salary, status=:status, photo_path=:photo_path, notes=:notes, qr_code_data=:qr
         WHERE id=:id""",
         params)
     conn.commit()
@@ -595,8 +623,8 @@ def get_payments(search="", date_from="", date_to=""):
            WHERE 1=1"""
     params = []
     if search:
-        q += " AND (m.full_name LIKE ? OR m.member_code LIKE ? OR s.full_name LIKE ? OR s.staff_code LIKE ? OR t.full_name LIKE ? OR t.trainer_code LIKE ? OR p.receipt_number LIKE ?)"
-        params.extend([f"%{search}%"] * 7)
+        q += " AND (m.full_name LIKE ? OR m.member_code LIKE ? OR s.full_name LIKE ? OR s.staff_code LIKE ? OR t.full_name LIKE ? OR t.trainer_code LIKE ? OR p.visitor_name LIKE ? OR p.receipt_number LIKE ?)"
+        params.extend([f"%{search}%"] * 8)
     if date_from:
         q += " AND date(p.payment_date) >= ?"
         params.append(date_from)
@@ -630,13 +658,14 @@ def add_payment(data):
         'plan_id': data.get('plan_id') if data.get('plan_id') else None,
         'receipt_number': data.get('receipt_number', 'PAY' + str(int(datetime.now().timestamp()))[-6:]),
         'payment_type': data.get('payment_type', 'member'),
+        'visitor_name': data.get('visitor_name', ''),
         'notes': data.get('notes', '')
     }
     c.execute("""INSERT INTO payments 
         (member_id, staff_id, trainer_id, amount, payment_date, payment_method, 
-         plan_id, receipt_number, payment_type, notes)
+         plan_id, receipt_number, payment_type, visitor_name, notes)
         VALUES (:member_id, :staff_id, :trainer_id, :amount, :payment_date, :payment_method,
-         :plan_id, :receipt_number, :payment_type, :notes)""", payment_data)
+         :plan_id, :receipt_number, :payment_type, :visitor_name, :notes)""", payment_data)
     conn.commit()
     lid = c.lastrowid
     conn.close()
@@ -645,8 +674,9 @@ def add_payment(data):
 def update_payment(pid, data):
     conn = get_conn()
     conn.execute("""UPDATE payments SET 
-        amount=:amount, payment_date=:payment_date, payment_method=:payment_method,
-        notes=:notes WHERE id=:id""",
+        member_id=:member_id, amount=:amount, payment_date=:payment_date,
+        payment_method=:payment_method, payment_type=:payment_type,
+        visitor_name=:visitor_name, notes=:notes WHERE id=:id""",
         {**data, 'id': pid})
     conn.commit()
     conn.close()
@@ -689,6 +719,85 @@ def get_payment_chart_data(period="monthly"):
     rows = c.fetchall()
     conn.close()
     return [{'label': r[0], 'value': r[1]} for r in rows]
+
+# ── EXPENSES ──────────────────────────────────────────────────
+def get_expense_categories():
+    conn = get_conn()
+    rows = conn.execute("SELECT * FROM expense_categories ORDER BY name").fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def add_expense_category(name):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO expense_categories (name) VALUES (?)", (name.strip(),))
+    conn.commit()
+    category_id = cursor.lastrowid
+    conn.close()
+    return category_id
+
+def delete_expense_category(category_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM expense_categories WHERE id=?", (category_id,))
+    conn.commit()
+    conn.close()
+
+def get_expenses(search=""):
+    conn = get_conn()
+    query = """SELECT e.*, c.name AS category_name FROM expenses e
+               LEFT JOIN expense_categories c ON e.category_id = c.id WHERE 1=1"""
+    params = []
+    if search:
+        query += " AND (e.title LIKE ? OR e.notes LIKE ? OR c.name LIKE ?)"
+        params.extend([f"%{search}%"] * 3)
+    query += " ORDER BY e.expense_date DESC, e.id DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def add_expense(data):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("""INSERT INTO expenses (category_id, title, amount, expense_date, payment_method, notes)
+                   VALUES (:category_id, :title, :amount, :expense_date, :payment_method, :notes)""", {
+        'category_id': data.get('category_id') or None, 'title': data.get('title', '').strip(),
+        'amount': float(data.get('amount', 0)), 'expense_date': data.get('expense_date', date.today().isoformat()),
+        'payment_method': data.get('payment_method', 'نقدی'), 'notes': data.get('notes', '')
+    })
+    conn.commit()
+    expense_id = cursor.lastrowid
+    conn.close()
+    return expense_id
+
+def update_expense(expense_id, data):
+    conn = get_conn()
+    conn.execute("""UPDATE expenses SET category_id=:category_id, title=:title, amount=:amount,
+                  expense_date=:expense_date, payment_method=:payment_method, notes=:notes WHERE id=:id""", {
+        'id': expense_id, 'category_id': data.get('category_id') or None,
+        'title': data.get('title', '').strip(), 'amount': float(data.get('amount', 0)),
+        'expense_date': data.get('expense_date', date.today().isoformat()),
+        'payment_method': data.get('payment_method', 'نقدی'), 'notes': data.get('notes', '')
+    })
+    conn.commit()
+    conn.close()
+
+def delete_expense(expense_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM expenses WHERE id=?", (expense_id,))
+    conn.commit()
+    conn.close()
+
+def expense_stats():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE date(expense_date) = date('now')")
+    daily = cursor.fetchone()[0]
+    cursor.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE strftime('%Y-%m', expense_date) = strftime('%Y-%m', 'now')")
+    monthly = cursor.fetchone()[0]
+    cursor.execute("SELECT COALESCE(SUM(amount), 0) FROM expenses")
+    total = cursor.fetchone()[0]
+    conn.close()
+    return {'daily': daily, 'monthly': monthly, 'total': total}
 
 # ── ATTENDANCE ────────────────────────────────────────────────
 def checkin(user_id, user_type="member"):
@@ -997,6 +1106,10 @@ def get_report_data(report_type, filters=None):
         c.execute("SELECT trainer_code, full_name, father_name, phone, email, specialization, salary, status, hire_date FROM trainers")
     elif report_type == 'payments':
         c.execute("SELECT receipt_number, payment_date, amount, payment_method, payment_type FROM payments ORDER BY payment_date DESC LIMIT 500")
+    elif report_type == 'expenses':
+        c.execute("""SELECT e.title, c.name AS category, e.amount, e.payment_method, e.expense_date, e.notes
+                  FROM expenses e LEFT JOIN expense_categories c ON e.category_id = c.id
+                  ORDER BY e.expense_date DESC, e.id DESC LIMIT 500""")
     elif report_type == 'attendance':
         c.execute("SELECT user_type, check_in, check_out FROM attendance ORDER BY check_in DESC LIMIT 500")
     elif report_type == 'equipment':

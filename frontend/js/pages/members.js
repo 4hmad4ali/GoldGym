@@ -134,7 +134,8 @@ function saveMember() {
         status: getMemberFormControl('mStatus').value,
         emergency_contact: getMemberFormControl('mEmergency').value,
         address: getMemberFormControl('mAddress').value,
-        notes: getMemberFormControl('mNotes').value
+        notes: getMemberFormControl('mNotes').value,
+        photo_base64: getMemberFormControl('mPhoto').dataset.photoBase64 || ''
     };
     
     var bridge = getBridge();
@@ -199,6 +200,7 @@ function openMemberModal(data) {
         if (!form) return;
 
         form.reset();
+        clearPersonPhoto('mPhoto', 'mPhotoPreview');
         getMemberFormControl('memberEditId').value = '';
         document.getElementById('memberFormTitle').textContent = data ? 'ویرایش عضو' : 'افزودن عضو جدید';
         document.getElementById('memberFormKicker').textContent = data ? 'MEMBER PROFILE' : 'NEW MEMBER PROFILE';
@@ -219,6 +221,9 @@ function openMemberModal(data) {
             getMemberFormControl('mEmergency').value = data.emergency_contact || '';
             getMemberFormControl('mAddress').value = data.address || '';
             getMemberFormControl('mNotes').value = data.notes || '';
+            getBridge().get_person_photo(data.member_code, 'member').then(function(photo) {
+                if (photo) setPersonPhotoPreview('mPhotoPreview', photo);
+            });
         } else {
             getMemberFormControl('mExpiry').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         }

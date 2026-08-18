@@ -11,6 +11,10 @@
 
     <form id="memberPageForm" class="member-form" onsubmit="event.preventDefault(); saveMember();">
         <input type="hidden" id="memberEditId">
+        <section class="member-form-card person-photo-card">
+            <div class="member-form-card__heading"><span><i class="fas fa-camera"></i></span><div><h2>تصویر عضو</h2><p>تصویر چهره برای کارت عضویت استفاده می‌شود.</p></div></div>
+            <div class="person-photo-upload"><div class="person-photo-preview" id="mPhotoPreview"><i class="fas fa-user"></i></div><div><label class="form-label" for="mPhoto">انتخاب تصویر</label><input type="file" class="form-control-gold person-photo-input" id="mPhoto" accept="image/png,image/jpeg,image/webp" onchange="preparePersonPhoto(this, 'mPhotoPreview')"><small>PNG، JPG یا WEBP — حداکثر 5 مگابایت</small></div></div>
+        </section>
         <section class="member-form-card">
             <div class="member-form-card__heading"><span><i class="fas fa-user"></i></span><div><h2>اطلاعات فردی</h2><p>اطلاعات اصلی عضو و راه‌های تماس او را وارد کنید.</p></div></div>
             <div class="member-form-grid form-gold">

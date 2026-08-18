@@ -10,6 +10,10 @@
     </div>
     <form id="staffPageForm" class="team-form" onsubmit="event.preventDefault(); saveStaff();">
         <input type="hidden" id="staffEditId">
+        <section class="team-form-card person-photo-card">
+            <div class="team-form-card__heading"><span><i class="fas fa-camera"></i></span><div><h2>تصویر کارمند</h2><p>تصویر چهره برای کارت هویت کارمند استفاده می‌شود.</p></div></div>
+            <div class="person-photo-upload"><div class="person-photo-preview" id="sPhotoPreview"><i class="fas fa-user"></i></div><div><label class="form-label" for="sPhoto">انتخاب تصویر</label><input type="file" class="form-control-gold person-photo-input" id="sPhoto" accept="image/png,image/jpeg,image/webp" onchange="preparePersonPhoto(this, 'sPhotoPreview')"><small>PNG، JPG یا WEBP — حداکثر 5 مگابایت</small></div></div>
+        </section>
         <section class="team-form-card">
             <div class="team-form-card__heading"><span><i class="fas fa-user-tie"></i></span><div><h2>اطلاعات کارمند</h2><p>مشخصات اصلی و مسئولیت کارمند را وارد کنید.</p></div></div>
             <div class="team-form-grid form-gold">

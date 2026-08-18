@@ -6,7 +6,7 @@ import base64
 import io
 import os
 import qrcode
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import database as db
 from datetime import date, datetime
 import uuid
@@ -66,9 +66,9 @@ class GoldenGymBridge:
     def get_page_template(self, page_name):
         """Return a vetted page template for the single-window desktop shell."""
         allowed_pages = {
-            'dashboard', 'members', 'payments', 'attendance', 'coaches',
+            'dashboard', 'members', 'payments', 'expenses', 'attendance', 'coaches',
             'equipment', 'cards', 'reports', 'notifications', 'settings', 'about',
-            'member-form', 'trainer-form', 'staff-form'
+            'member-form', 'trainer-form', 'staff-form', 'payment-form', 'equipment-form'
         }
         if page_name not in allowed_pages:
             return ''
@@ -139,6 +139,31 @@ class GoldenGymBridge:
     
     def get_member_by_code(self, code):
         return db.get_member_by_code(code)
+
+    def _store_person_photo(self, base64_data, folder, code):
+        """Normalize a submitted portrait to a print-friendly square PNG."""
+        if not base64_data:
+            return ''
+        encoded = base64_data.split(',', 1)[-1]
+        image = Image.open(io.BytesIO(base64.b64decode(encoded))).convert('RGB')
+        image = ImageOps.fit(image, (900, 900), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+        safe_code = ''.join(char for char in str(code) if char.isalnum() or char in ('-', '_')) or uuid.uuid4().hex
+        photo_path = os.path.join(self.user_data_path, folder, safe_code + '.png')
+        image.save(photo_path, 'PNG', optimize=True)
+        return photo_path
+
+    def get_person_photo(self, code, person_type='member'):
+        lookup = {
+            'member': db.get_member_by_code,
+            'trainer': db.get_trainer_by_code,
+            'staff': db.get_staff_by_code
+        }.get(person_type)
+        person = lookup(code) if lookup else None
+        photo_path = (person or {}).get('photo_path', '')
+        if photo_path and os.path.isfile(photo_path):
+            with open(photo_path, 'rb') as photo_file:
+                return base64.b64encode(photo_file.read()).decode()
+        return None
     
     def add_member(self, data):
         try:
@@ -156,6 +181,7 @@ class GoldenGymBridge:
                 'expiry_date': data.get('expiry_date', ''),
                 'membership_type': data.get('membership_type', 'ماهانه'),
                 'status': data.get('status', 'Active'),
+                'photo_path': self._store_person_photo(data.get('photo_base64', ''), 'members', data.get('member_code', '')),
                 'emergency_contact': data.get('emergency_contact', ''),
                 'notes': data.get('notes', '')
             }
@@ -168,6 +194,9 @@ class GoldenGymBridge:
     
     def update_member(self, mid, data):
         try:
+            member = db.get_member(mid) or {}
+            if data.get('photo_base64'):
+                data['photo_path'] = self._store_person_photo(data['photo_base64'], 'members', member.get('member_code', data.get('member_code', '')))
             db.update_member(mid, data)
             db.add_activity("member_edit", f"ویرایش عضو: {data.get('full_name', '')}", json.dumps(data, ensure_ascii=False))
             return {'success': True}
@@ -205,6 +234,7 @@ class GoldenGymBridge:
                 'plan_id': data.get('plan_id'),
                 'receipt_number': data.get('receipt_number', 'PAY' + str(int(datetime.now().timestamp()))[-6:]),
                 'payment_type': data.get('payment_type', 'member'),
+                'visitor_name': data.get('visitor_name', ''),
                 'notes': data.get('notes', '')
             }
             payment_id = db.add_payment(payment_data)
@@ -212,6 +242,9 @@ class GoldenGymBridge:
             if member:
                 db.add_activity("payment_add", f"پرداخت: AFN {data.get('amount', 0):,.0f} از {member.get('full_name', '')}", json.dumps(data, ensure_ascii=False))
                 db.add_notification(f"پرداخت: AFN {data.get('amount', 0):,.0f}", f"از {member.get('full_name', '')}", "success")
+            elif data.get('payment_type') == 'daily':
+                visitor = data.get('visitor_name') or 'عضو روزانه'
+                db.add_activity("daily_payment_add", f"پرداخت روزانه: AFN {data.get('amount', 0):,.0f} از {visitor}", json.dumps(data, ensure_ascii=False))
             return {'success': True, 'id': payment_id}
         except Exception as e:
             return {'success': False, 'message': str(e)}
@@ -238,6 +271,54 @@ class GoldenGymBridge:
     
     def get_payment_chart_data(self, period="monthly"):
         return db.get_payment_chart_data(period)
+
+    # ── EXPENSES ──────────────────────────────────────────
+    def get_expenses(self, search=""):
+        return db.get_expenses(search)
+
+    def add_expense(self, data):
+        try:
+            expense_id = db.add_expense(data)
+            db.add_activity("expense_add", f"هزینه ثبت شد: {data.get('title', '')}", json.dumps(data, ensure_ascii=False))
+            return {'success': True, 'id': expense_id}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def update_expense(self, expense_id, data):
+        try:
+            db.update_expense(expense_id, data)
+            db.add_activity("expense_edit", f"هزینه ویرایش شد: {data.get('title', '')}", json.dumps(data, ensure_ascii=False))
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def delete_expense(self, expense_id):
+        try:
+            db.delete_expense(expense_id)
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def get_expense_categories(self):
+        return db.get_expense_categories()
+
+    def add_expense_category(self, name):
+        try:
+            if not str(name or '').strip():
+                return {'success': False, 'message': 'نام دسته‌بندی الزامی است'}
+            return {'success': True, 'id': db.add_expense_category(name)}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def delete_expense_category(self, category_id):
+        try:
+            db.delete_expense_category(category_id)
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def get_expense_stats(self):
+        return db.expense_stats()
     
     # ── ATTENDANCE ────────────────────────────────────────
     def get_today_attendance(self):
@@ -309,6 +390,7 @@ class GoldenGymBridge:
                 'specialization': data.get('specialization', ''),
                 'salary': data.get('salary', 0),
                 'status': data.get('status', 'Active'),
+                'photo_path': self._store_person_photo(data.get('photo_base64', ''), 'coaches', data.get('trainer_code', '')),
                 'notes': data.get('notes', '')
             }
             trainer_id = db.add_trainer(trainer_data)
@@ -319,6 +401,9 @@ class GoldenGymBridge:
     
     def update_trainer(self, tid, data):
         try:
+            trainer = db.get_trainer_by_id(tid) or {}
+            if data.get('photo_base64'):
+                data['photo_path'] = self._store_person_photo(data['photo_base64'], 'coaches', trainer.get('trainer_code', data.get('trainer_code', '')))
             db.update_trainer(tid, data)
             db.add_activity("trainer_edit", f"ویرایش مربی: {data.get('full_name', '')}", json.dumps(data, ensure_ascii=False))
             return {'success': True}
@@ -366,6 +451,7 @@ class GoldenGymBridge:
                 'position': data.get('position', ''),
                 'salary': data.get('salary', 0),
                 'status': data.get('status', 'Active'),
+                'photo_path': self._store_person_photo(data.get('photo_base64', ''), 'staff', data.get('staff_code', '')),
                 'notes': data.get('notes', '')
             }
             staff_id = db.add_staff(staff_data)
@@ -376,6 +462,9 @@ class GoldenGymBridge:
     
     def update_staff(self, sid, data):
         try:
+            staff = db.get_staff_by_id(sid) or {}
+            if data.get('photo_base64'):
+                data['photo_path'] = self._store_person_photo(data['photo_base64'], 'staff', staff.get('staff_code', data.get('staff_code', '')))
             db.update_staff(sid, data)
             db.add_activity("staff_edit", f"ویرایش کارمند: {data.get('full_name', '')}", json.dumps(data, ensure_ascii=False))
             return {'success': True}
@@ -512,9 +601,84 @@ class GoldenGymBridge:
         try:
             card = self._create_card_template(data)
             filename = self._save_card(card, data)
-            return {'success': True, 'filename': filename, 'path': os.path.basename(filename)}
+            return {'success': True, 'filename': filename, 'path': filename}
         except Exception as e:
             return {'success': False, 'message': str(e)}
+
+    def print_card(self, data):
+        """Print one CR80 card directly through the Windows printer driver."""
+        try:
+            import win32con
+            import win32print
+            import win32ui
+            from PIL import ImageWin
+
+            card = self._create_card_template(data).convert('RGB')
+            printer_name = win32print.GetDefaultPrinter()
+            printer_dc = win32ui.CreateDC()
+            printer_dc.CreatePrinterDC(printer_name)
+
+            dpi_x = printer_dc.GetDeviceCaps(win32con.LOGPIXELSX)
+            dpi_y = printer_dc.GetDeviceCaps(win32con.LOGPIXELSY)
+            printable_width = printer_dc.GetDeviceCaps(win32con.HORZRES)
+            printable_height = printer_dc.GetDeviceCaps(win32con.VERTRES)
+            card_width = round((85.60 / 25.4) * dpi_x)
+            card_height = round((53.98 / 25.4) * dpi_y)
+
+            # Keep the printed card at the physical CR80 aspect ratio.
+            card = card.resize((card_width, card_height), Image.Resampling.LANCZOS)
+            x = max(0, (printable_width - card_width) // 2)
+            y = max(0, (printable_height - card_height) // 2)
+
+            printer_dc.StartDoc('Golden Gym Card')
+            printer_dc.StartPage()
+            ImageWin.Dib(card).draw(printer_dc.GetHandleOutput(), (x, y, x + card_width, y + card_height))
+            printer_dc.EndPage()
+            printer_dc.EndDoc()
+            printer_dc.DeleteDC()
+            return {'success': True, 'printer': printer_name, 'size_mm': '85.60 × 53.98'}
+        except Exception as e:
+            return {'success': False, 'message': f'خطا در چاپ کارت: {str(e)}'}
+
+    def save_rendered_card(self, base64_image, code, card_type='member'):
+        """Persist the high-resolution preview PNG exactly as rendered in the UI."""
+        try:
+            folder_map = {'member': 'members', 'staff': 'staff', 'trainer': 'coaches'}
+            folder = os.path.join(self.user_data_path, folder_map.get(card_type, 'members'))
+            os.makedirs(folder, exist_ok=True)
+            image = Image.open(io.BytesIO(base64.b64decode(base64_image))).convert('RGB')
+            filename = os.path.join(folder, f"{code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+            image.save(filename, 'PNG', optimize=True)
+            return {'success': True, 'path': filename, 'width': image.width, 'height': image.height}
+        except Exception as e:
+            return {'success': False, 'message': f'خطا در ذخیره تصویر کارت: {str(e)}'}
+
+    def print_rendered_card(self, base64_image):
+        """Print the UI-rendered PNG at physical CR80 dimensions, without browser UI."""
+        try:
+            import win32con
+            import win32print
+            import win32ui
+            from PIL import ImageWin
+
+            image = Image.open(io.BytesIO(base64.b64decode(base64_image))).convert('RGB')
+            printer_name = win32print.GetDefaultPrinter()
+            dc = win32ui.CreateDC()
+            dc.CreatePrinterDC(printer_name)
+            card_width = round((85.60 / 25.4) * dc.GetDeviceCaps(win32con.LOGPIXELSX))
+            card_height = round((53.98 / 25.4) * dc.GetDeviceCaps(win32con.LOGPIXELSY))
+            x = max(0, (dc.GetDeviceCaps(win32con.HORZRES) - card_width) // 2)
+            y = max(0, (dc.GetDeviceCaps(win32con.VERTRES) - card_height) // 2)
+            image = image.resize((card_width, card_height), Image.Resampling.LANCZOS)
+            dc.StartDoc('Golden Gym CR80 Card')
+            dc.StartPage()
+            ImageWin.Dib(image).draw(dc.GetHandleOutput(), (x, y, x + card_width, y + card_height))
+            dc.EndPage()
+            dc.EndDoc()
+            dc.DeleteDC()
+            return {'success': True, 'printer': printer_name, 'size_mm': '85.60 × 53.98'}
+        except Exception as e:
+            return {'success': False, 'message': f'خطا در چاپ کارت: {str(e)}'}
     
     def _create_card_template(self, data):
         width = 550
@@ -525,7 +689,7 @@ class GoldenGymBridge:
         
         # Card Border
         draw.rectangle([5, 5, width-5, height-5], outline='#FFB900', width=3)
-        draw.rectangle([10, 10, width-10, height-10], outline='rgba(255,185,0,0.3)', width=1)
+        draw.rectangle([10, 10, width-10, height-10], outline='#6D5714', width=1)
         
         # Header Section
         draw.rectangle([10, 10, width-10, 85], fill='#FFB900')
@@ -555,12 +719,18 @@ class GoldenGymBridge:
         draw.rectangle([width-110, 20, width-25, 50], fill=type_color, outline='white', width=1)
         draw.text((width-75, 28), type_label, fill='white', font=None)
         
-        # Photo
+        # Portrait area — a photo is used when it has been captured for the person.
         photo_x = (width - 100) // 2
         draw.ellipse([photo_x, 100, photo_x + 100, 200], fill='#2A2A4A', outline='#FFB900', width=3)
-        full_name = data.get('full_name', '')
-        initial = full_name[0] if full_name else '?'
-        draw.text((photo_x + 35, 130), initial, fill='#FFB900', font=None)
+        photo_path = data.get('photo_path', '')
+        if photo_path and os.path.isfile(photo_path):
+            try:
+                portrait = Image.open(photo_path).convert('RGB').resize((94, 94))
+                mask = Image.new('L', (94, 94), 0)
+                ImageDraw.Draw(mask).ellipse((0, 0, 94, 94), fill=255)
+                img.paste(portrait, (photo_x + 3, 103), mask)
+            except Exception:
+                pass
         
         # Information
         y_start = 220
@@ -759,6 +929,22 @@ class GoldenGymBridge:
     
     def export_report(self, report_type, format="csv"):
         return db.export_report(report_type, format)
+
+    def save_report_csv(self, report_type):
+        """Save a report natively because browser downloads are not reliable in pywebview."""
+        try:
+            report = db.export_report(report_type, 'csv')
+            if not report.get('success'):
+                return report
+            reports_path = os.path.join(self.user_data_path, 'reports')
+            os.makedirs(reports_path, exist_ok=True)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            file_path = os.path.join(reports_path, f'report_{report_type}_{timestamp}.csv')
+            with open(file_path, 'w', encoding='utf-8-sig', newline='') as report_file:
+                report_file.write(report.get('data', ''))
+            return {'success': True, 'path': file_path}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
     
     # ── UTILITY ───────────────────────────────────────────
     def get_current_date(self):
