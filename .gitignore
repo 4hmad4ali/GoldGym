@@ -1,0 +1,32 @@
+# Python bytecode and tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local Python environments
+.venv/
+venv/
+.venv-system/
+env/
+
+# Local runtime data and generated assets
+data/*.db
+data/*.db-*
+user_data/
+assets/logo.png
+assets/signature.png
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
