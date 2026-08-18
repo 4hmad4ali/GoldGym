@@ -32,7 +32,7 @@ function generateCardPreview() {
     var preview = document.getElementById('cardPreview');
     
     if (!code) {
-        preview.innerHTML = '<div style="padding:40px;text-align:center;color:#888;"><i class="fas fa-id-card" style="font-size:48px;color:#555;"></i><p style="margin-top:12px;">لطفاً یک شخص را انتخاب کنید</p></div>';
+        preview.innerHTML = '<div class="access-preview-empty"><i class="fas fa-id-card"></i><strong>یک شخص را انتخاب کنید</strong><p>اطلاعات کارت پس از انتخاب شخص نمایش داده می‌شود.</p></div>';
         return;
     }
     
@@ -44,7 +44,7 @@ function generateCardPreview() {
     
     promise.then(function(person) {
         if (!person) {
-            preview.innerHTML = '<div style="padding:40px;text-align:center;color:#888;"><p>شخص یافت نشد</p></div>';
+            preview.innerHTML = '<div class="access-preview-empty"><i class="fas fa-user-slash"></i><strong>شخص پیدا نشد</strong><p>فهرست افراد را به‌روزرسانی و دوباره تلاش کنید.</p></div>';
             return;
         }
         
@@ -86,7 +86,7 @@ function generateCardPreview() {
                 : '<span style="color:#bbb;font-size:9px;">بدون امضا</span>';
             
             var cardHTML = `
-                <div class="gym-card type-${type}" style="width:100%;max-width:460px;aspect-ratio:16/10;background:#fdfdfb;border:2.5px solid #1a1a2e;border-radius:26px;padding:16px 22px;margin:0 auto;font-family:Segoe UI,Tahoma,sans-serif;direction:rtl;box-shadow:0 12px 40px rgba(0,0,0,0.35);display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box;">
+                <div class="gym-card type-${type}" style="width:100%;max-width:460px;aspect-ratio:16/10;background:#fdfdfb;border:2.5px solid #1a1a2e;border-radius:26px;padding:16px 22px;margin:0 auto;font-family:Vazirmatn,'Segoe UI',Tahoma,sans-serif;direction:rtl;box-shadow:0 12px 40px rgba(0,0,0,0.35);display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box;">
                     
                     <!-- Top row: ID (right) — Gym name + logo (center) — QR/barcode (left) -->
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -164,4 +164,77 @@ function saveCardAsImage() {
         showToast('اطلاع', 'برای ذخیره تصویر، از گزینه چاپ استفاده کنید', 'info');
         window.print();
     }
+}
+
+function escapeCardText(value) {
+    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function bindCardPrintAction() {
+    var printButton = document.querySelector('.access-panel__actions .access-action:not(.is-primary)');
+    if (!printButton) return;
+    printButton.onclick = printCard;
+}
+
+function generateCardPreview() {
+    bindCardPrintAction();
+    var type = document.getElementById('cardPersonType').value;
+    var code = document.getElementById('cardPersonSelect').value;
+    var preview = document.getElementById('cardPreview');
+    if (!code || !preview) {
+        if (preview) preview.innerHTML = '<div class="access-preview-empty"><i class="fas fa-id-card"></i><strong>یک شخص را انتخاب کنید</strong><p>پس از انتخاب شخص، پیش‌نمایش کارت نمایش داده می‌شود.</p></div>';
+        return;
+    }
+
+    var bridge = getBridge();
+    var personPromise = type === 'member' ? bridge.get_member_by_code(code) : type === 'trainer' ? bridge.get_trainer_by_code(code) : bridge.get_staff_by_code(code);
+    personPromise.then(function(person) {
+        if (!person) throw new Error('شخص مورد نظر پیدا نشد');
+        var personCode = person.member_code || person.trainer_code || person.staff_code || '';
+        var qrPrefix = type === 'member' ? 'GGYM' : type === 'trainer' ? 'GGYM-TRN' : 'GGYM-STF';
+        var qrData = qrPrefix + '|' + personCode + '|' + (person.full_name || '') + '|' + (person.status || '') + '|' + (person.expiry_date || '');
+        return Promise.all([bridge.get_settings(), bridge.get_gym_logo(), bridge.get_gym_signature(), bridge.generate_qr(qrData), Promise.resolve(person)]);
+    }).then(function(results) {
+        var settings = results[0] || {};
+        var logo = results[1];
+        var signature = results[2];
+        var qr = results[3];
+        var person = results[4];
+        var personCode = person.member_code || person.trainer_code || person.staff_code || '';
+        var typeLabels = { member: 'عضو باشگاه', trainer: 'مربی باشگاه', staff: 'کارمند باشگاه' };
+        var detailLabel = type === 'member' ? 'نوع عضویت' : type === 'trainer' ? 'تخصص' : 'سمت';
+        var detailValue = person.membership_type || person.specialization || person.position || '—';
+        var expiry = person.expiry_date || 'ندارد';
+        var statusActive = person.status === 'Active';
+        var logoMarkup = logo ? '<img src="data:image/png;base64,' + logo + '" alt="لوگو">' : '<i class="fas fa-dumbbell"></i>';
+        var signatureMarkup = signature ? '<img src="data:image/png;base64,' + signature + '" alt="امضای مدیر">' : '<span>امضای مدیر</span>';
+        var qrMarkup = qr && qr.success && qr.image ? '<img src="data:image/png;base64,' + qr.image + '" alt="QR کارت">' : '<i class="fas fa-qrcode"></i>';
+        preview.innerHTML = '<article class="gym-card professional-card" dir="rtl">' +
+            '<div class="professional-card__accent"></div>' +
+            '<header class="professional-card__header"><div class="professional-card__brand"><span class="professional-card__logo">' + logoMarkup + '</span><div><strong>' + escapeCardText(settings.gym_name || 'جیم گلدن') + '</strong><span>GOLDEN GYM · FITNESS CLUB</span></div></div><div class="professional-card__kind"><i class="fas fa-id-card"></i>' + escapeCardText(typeLabels[type]) + '</div></header>' +
+            '<div class="professional-card__main"><div class="professional-card__person"><span class="professional-card__avatar">' + escapeCardText((person.full_name || 'ع').trim().charAt(0)) + '</span><div><h2>' + escapeCardText(person.full_name || '—') + '</h2><p>فرزند ' + escapeCardText(person.father_name || '—') + '</p><code>' + escapeCardText(personCode) + '</code></div></div><div class="professional-card__qr">' + qrMarkup + '<span>اسکن برای اعتبارسنجی</span></div></div>' +
+            '<div class="professional-card__details"><div><span>' + detailLabel + '</span><strong>' + escapeCardText(detailValue) + '</strong></div><div><span>تاریخ انقضا</span><strong>' + escapeCardText(expiry) + '</strong></div><div><span>وضعیت کارت</span><strong class="professional-card__status ' + (statusActive ? 'is-active' : 'is-inactive') + '"><i class="fas fa-circle"></i>' + (statusActive ? 'فعال' : 'غیرفعال') + '</strong></div></div>' +
+            '<footer class="professional-card__footer"><div class="professional-card__signature">' + signatureMarkup + '<span>امضا و تأیید مدیریت</span></div><small>مالک این کارت، عضو ثبت‌شده باشگاه است</small></footer>' +
+        '</article>';
+    })['catch'](function(error) {
+        if (preview) preview.innerHTML = '<div class="access-preview-empty"><i class="fas fa-circle-exclamation"></i><strong>نمایش کارت ممکن نیست</strong><p>' + escapeCardText(error.message || 'دوباره تلاش کنید.') + '</p></div>';
+    });
+}
+
+function printCard() {
+    var card = document.querySelector('.professional-card');
+    if (!card) {
+        showToast('خطا', 'ابتدا یک کارت را انتخاب و آماده کنید', 'error');
+        return;
+    }
+    var printWindow = window.open('', '_blank', 'width=920,height=620');
+    if (!printWindow) {
+        showToast('خطا', 'پنجره چاپ باز نشد. اجازه باز شدن پنجره را بررسی کنید.', 'error');
+        return;
+    }
+    var printCss = document.getElementById('cardPrintStyles');
+    printWindow.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>کارت باشگاه</title><style>' + (printCss ? printCss.textContent : '') + '</style></head><body><main class="print-card-sheet">' + card.outerHTML + '</main></body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(function() { printWindow.print(); }, 250);
 }

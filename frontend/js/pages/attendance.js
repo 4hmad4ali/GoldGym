@@ -7,37 +7,55 @@ function renderAttendance() {
     var bridge = getBridge();
     bridge.get_today_attendance().then(function(records) {
         var body = document.getElementById('attendanceBody');
+        var resultCount = document.getElementById('attendanceResultCount');
+        if (!body) return;
+        if (resultCount) resultCount.textContent = records.length;
         
         bridge.get_attendance_stats().then(function(stats) {
-            document.getElementById('attendanceStats').textContent =
-                'امروز: ' + (stats.today || 0) + ' | این هفته: ' + (stats.week || 0) + ' | این ماه: ' + (stats.month || 0);
+            setAttendanceMetric('attendanceStatToday', stats.today);
+            setAttendanceMetric('attendanceStatWeek', stats.week);
+            setAttendanceMetric('attendanceStatMonth', stats.month);
         });
         
         if (records.length === 0) {
-            body.innerHTML = '<tr><td colspan="7" class="text-muted text-center">هیچ رکورد حضوری وجود ندارد</td></tr>';
+            body.innerHTML = '<tr><td colspan="7"><div class="attendance-empty"><span><i class="fas fa-clipboard-check"></i></span><strong>هنوز ترددی ثبت نشده است</strong><p>برای شروع، کد شخص یا QR کارت را در ایستگاه ثبت سریع وارد کنید.</p></div></td></tr>';
             return;
         }
         
         body.innerHTML = records.map(function(a) {
-            var name = a.member_name || a.trainer_name || a.staff_name || a.user_id;
-            var code = a.member_code || a.trainer_code || a.staff_code || '-';
+            var name = escapeAttendanceText(a.member_name || a.trainer_name || a.staff_name || a.user_id);
+            var code = escapeAttendanceText(a.member_code || a.trainer_code || a.staff_code || '-');
             var type = a.user_type === 'member' ? 'عضو' : a.user_type === 'trainer' ? 'مربی' : 'کارمند';
             var status = a.check_out ? 'خروج' : 'حاضر';
-            var statusClass = a.check_out ? 'secondary' : 'success';
+            var statusClass = a.check_out ? 'checked-out' : 'present';
             return '<tr>' +
-                '<td><span class="badge bg-info">' + type + '</span></td>' +
-                '<td>' + name + '</td>' +
-                '<td>' + code + '</td>' +
-                '<td>' + (a.check_in ? a.check_in.slice(11, 16) : '-') + '</td>' +
-                '<td>' + (a.check_out ? a.check_out.slice(11, 16) : '-') + '</td>' +
-                '<td><span class="badge bg-' + statusClass + '">' + status + '</span></td>' +
-                '<td>' +
-                    (!a.check_out ? '<button class="btn btn-sm btn-gold me-1" title="ثبت خروج" onclick="checkoutRecord(' + a.id + ')"><i class="fas fa-sign-out-alt"></i></button>' : '') +
-                    '<button class="btn btn-sm btn-outline-gold" title="حذف رکورد" onclick="deleteAttendance(' + a.id + ')"><i class="fas fa-trash"></i></button>' +
-                '</td>' +
+                '<td><div class="attendance-person"><span class="attendance-avatar">' + attendanceInitials(name) + '</span><strong>' + name + '</strong></div></td>' +
+                '<td><span class="attendance-type attendance-type--' + a.user_type + '">' + type + '</span></td>' +
+                '<td><span class="attendance-code">' + code + '</span></td>' +
+                '<td><span class="attendance-time"><i class="fas fa-arrow-right-to-bracket"></i>' + attendanceTime(a.check_in) + '</span></td>' +
+                '<td><span class="attendance-time">' + (a.check_out ? '<i class="fas fa-arrow-right-from-bracket"></i>' + attendanceTime(a.check_out) : '—') + '</span></td>' +
+                '<td><span class="attendance-status attendance-status--' + statusClass + '"><i class="fas fa-circle"></i>' + status + '</span></td>' +
+                '<td><div class="attendance-row-actions">' + (!a.check_out ? '<button class="attendance-row-action is-primary" type="button" title="ثبت خروج" onclick="checkoutRecord(' + a.id + ')"><i class="fas fa-arrow-right-from-bracket"></i></button>' : '') + '<button class="attendance-row-action is-danger" type="button" title="حذف رکورد" onclick="deleteAttendance(' + a.id + ')"><i class="fas fa-trash"></i></button></div></td>' +
             '</tr>';
         }).join('');
     })['catch'](function(e) { console.error(e); });
+}
+
+function setAttendanceMetric(id, value) {
+    var element = document.getElementById(id);
+    if (element) element.textContent = value || 0;
+}
+
+function escapeAttendanceText(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function attendanceInitials(name) {
+    return escapeAttendanceText(String(name).trim().split(/\s+/).slice(0, 2).map(function(part) { return part.charAt(0); }).join('') || 'ح');
+}
+
+function attendanceTime(value) {
+    return value ? escapeAttendanceText(String(value).slice(11, 16)) : '—';
 }
 
 function quickCheckin() {
@@ -92,6 +110,10 @@ function quickCheckout() {
         return;
     }
     
+    if (code.indexOf('GGYM|') === 0) {
+        code = code.split('|')[1] || '';
+    }
+
     var bridge = getBridge();
     bridge.get_today_attendance().then(function(records) {
         var record = records.find(function(r) {
@@ -136,4 +158,118 @@ function deleteAttendance(id) {
             showToast('خطا', 'خطا: ' + e.message, 'error');
         });
     }
+}
+
+function extractAttendanceCode(value) {
+    var raw = String(value || '').trim();
+    var parts = raw.split('|');
+    if (parts.length >= 2 && ['GGYM', 'GGYM-STF', 'GGYM-TRN'].indexOf(parts[0]) !== -1) return parts[1].trim();
+    return raw;
+}
+
+function showAttendanceAccessState(state, title, message) {
+    var result = document.getElementById('attendanceAccessResult');
+    if (!result) return;
+    var icons = { checking: 'fa-spinner fa-spin', allowed: 'fa-circle-check', denied: 'fa-circle-xmark', error: 'fa-triangle-exclamation', ready: 'fa-shield-halved' };
+    result.className = 'attendance-access-result is-' + (state || 'ready');
+    result.innerHTML = '<span><i class="fas ' + (icons[state] || icons.ready) + '"></i></span><div><strong>' + escapeAttendanceText(title || '') + '</strong><p>' + escapeAttendanceText(message || '') + '</p></div>';
+}
+
+function validateAndCheckinAttendance(code) {
+    code = extractAttendanceCode(code);
+    if (!code) {
+        showAttendanceAccessState('error', 'کد وارد نشده است', 'کد عضویت یا QR کارت را اسکن یا وارد کنید.');
+        showToast('خطا', 'لطفاً کد را وارد کنید', 'error');
+        return;
+    }
+
+    showAttendanceAccessState('checking', 'در حال بررسی اعتبار کارت', 'وضعیت عضویت و اجازه ورود در حال بررسی است...');
+    getBridge().verify_card({ code: code }).then(function(verification) {
+        if (!verification || !verification.valid || !verification.data) {
+            var message = (verification && verification.message) || 'کارت معتبر نیست یا اجازه ورود ندارد.';
+            showAttendanceAccessState('denied', 'ورود غیرمجاز', message);
+            showToast('ورود غیرمجاز', message, 'error');
+            return null;
+        }
+        showAttendanceAccessState('checking', 'کارت معتبر است', 'در حال ثبت ورود ' + (verification.data.full_name || '') + '...');
+        return getBridge().checkin(verification.data.id, verification.type).then(function(result) {
+            return { result: result, verification: verification };
+        });
+    }).then(function(payload) {
+        if (!payload) return;
+        if (payload.result && payload.result.att_id) {
+            var input = document.getElementById('attendanceCode');
+            if (input) input.value = '';
+            showAttendanceAccessState('allowed', 'ورود مجاز و ثبت شد', (payload.verification.data.full_name || 'شخص') + ' با موفقیت وارد باشگاه شد.');
+            renderAttendance();
+            showToast('ورود ثبت شد', 'حضور با موفقیت ثبت شد');
+        } else {
+            var message = (payload.result && payload.result.message) || 'ثبت ورود انجام نشد.';
+            showAttendanceAccessState('denied', 'ورود ثبت نشد', message);
+            showToast('خطا', message, 'error');
+        }
+    })['catch'](function(error) {
+        showAttendanceAccessState('error', 'خطا در بررسی کارت', error.message || 'اتصال به سیستم برقرار نشد.');
+        showToast('خطا', 'خطا در بررسی کارت: ' + error.message, 'error');
+    });
+}
+
+function quickCheckin() {
+    var input = document.getElementById('attendanceCode');
+    validateAndCheckinAttendance(input ? input.value : '');
+}
+
+function scanAttendanceQrImage(fileInput) {
+    var file = fileInput && fileInput.files ? fileInput.files[0] : null;
+    if (!file) return;
+    showAttendanceAccessState('checking', 'در حال اسکن QR', 'تصویر کارت در حال خواندن است...');
+    var reader = new FileReader();
+    reader.onload = function(event) {
+        getBridge().scan_card_image(event.target.result.split(',')[1]).then(function(scanResult) {
+            if (!scanResult || !scanResult.success || !scanResult.qr_data) {
+                var message = (scanResult && scanResult.message) || 'QR کدی در تصویر پیدا نشد.';
+                showAttendanceAccessState('denied', 'اسکن ناموفق', message);
+                showToast('خطا', message, 'error');
+                return;
+            }
+            var code = extractAttendanceCode(scanResult.qr_data);
+            var input = document.getElementById('attendanceCode');
+            if (input) input.value = code;
+            validateAndCheckinAttendance(code);
+        })['catch'](function(error) {
+            showAttendanceAccessState('error', 'خطا در اسکن QR', error.message || 'تصویر قابل پردازش نیست.');
+            showToast('خطا', 'خطا در اسکن QR: ' + error.message, 'error');
+        });
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+}
+
+function quickCheckout() {
+    var input = document.getElementById('attendanceCode');
+    var code = extractAttendanceCode(input ? input.value : '');
+    if (!code) {
+        showToast('خطا', 'لطفاً کد را وارد کنید', 'error');
+        return;
+    }
+    getBridge().get_today_attendance().then(function(records) {
+        var record = records.find(function(item) {
+            return (item.member_code || item.trainer_code || item.staff_code) === code && !item.check_out;
+        });
+        if (!record) {
+            showAttendanceAccessState('denied', 'خروج ثبت نشد', 'حضور فعالی برای این کارت پیدا نشد.');
+            showToast('خطا', 'هیچ حضور فعالی برای این کد یافت نشد', 'error');
+            return null;
+        }
+        return getBridge().checkout(record.id);
+    }).then(function(result) {
+        if (!result) return;
+        if (input) input.value = '';
+        showAttendanceAccessState('allowed', 'خروج ثبت شد', 'خروج با موفقیت ثبت شد.');
+        renderAttendance();
+        showToast('خروج', 'ثبت خروج با موفقیت انجام شد');
+    })['catch'](function(error) {
+        showAttendanceAccessState('error', 'خطا در ثبت خروج', error.message || 'خروج ثبت نشد.');
+        showToast('خطا', 'خطا: ' + error.message, 'error');
+    });
 }

@@ -1,0 +1,28 @@
+<!-- ==================== EQUIPMENT ==================== -->
+<div id="page-equipment" class="page-section equipment-page">
+    <header class="equipment-page__header">
+        <div>
+            <div class="equipment-page__kicker">EQUIPMENT INVENTORY</div>
+            <h1 class="equipment-page__title"><i class="fas fa-dumbbell"></i>مدیریت تجهیزات</h1>
+            <p class="equipment-page__subtitle">موجودی، محل استقرار و وضعیت عملیاتی تجهیزات باشگاه را یک‌جا زیر نظر داشته باشید.</p>
+        </div>
+        <button class="equipment-page__add" type="button" onclick="openEquipmentModal()"><i class="fas fa-plus"></i>تجهیزات جدید</button>
+    </header>
+
+    <section class="equipment-overview" aria-label="وضعیت تجهیزات">
+        <article class="equipment-metric"><span class="equipment-metric__icon total"><i class="fas fa-dumbbell"></i></span><div><strong id="equipmentStatTotal">0</strong><span>کل تجهیزات</span></div></article>
+        <article class="equipment-metric"><span class="equipment-metric__icon active"><i class="fas fa-circle-check"></i></span><div><strong id="equipmentStatActive">0</strong><span>آماده استفاده</span></div></article>
+        <article class="equipment-metric"><span class="equipment-metric__icon broken"><i class="fas fa-screwdriver-wrench"></i></span><div><strong id="equipmentStatBroken">0</strong><span>نیازمند تعمیر</span></div></article>
+        <article class="equipment-metric"><span class="equipment-metric__icon inactive"><i class="fas fa-pause-circle"></i></span><div><strong id="equipmentStatInactive">0</strong><span>غیرفعال</span></div></article>
+    </section>
+
+    <section class="equipment-directory">
+        <div class="equipment-directory__toolbar">
+            <div><h2>فهرست تجهیزات</h2><p><span id="equipmentResultCount">0</span> مورد در این نمایش</p></div>
+            <div class="equipment-filters"><label class="equipment-search" for="equipmentSearch"><i class="fas fa-magnifying-glass"></i><input type="search" class="form-control-gold" id="equipmentSearch" placeholder="جستجو با نام، دسته یا محل..." oninput="filterEquipment()"></label><button class="equipment-clear-filter" type="button" onclick="clearEquipmentFilter()" title="پاک کردن جستجو"><i class="fas fa-filter-circle-xmark"></i><span>پاک کردن</span></button></div>
+        </div>
+        <div class="table-responsive equipment-table-wrap">
+            <table class="table-gold equipment-table"><thead><tr><th>تجهیزات</th><th>دسته‌بندی</th><th>موجودی</th><th>محل استقرار</th><th>وضعیت</th><th class="text-center">عملیات</th></tr></thead><tbody id="equipmentBody"></tbody></table>
+        </div>
+    </section>
+</div>

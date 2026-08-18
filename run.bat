@@ -6,10 +6,12 @@ color 0A
 set PYTHONIOENCODING=utf-8
 set PYTHONUTF8=1
 
-if exist ".venv-system\Scripts\python.exe" (
+if exist ".venv\Scripts\python.exe" (
+    set "PYTHON=.venv\Scripts\python.exe"
+) else if exist ".venv-system\Scripts\python.exe" (
     set "PYTHON=.venv-system\Scripts\python.exe"
 ) else (
-    set "PYTHON=python"
+    set "PYTHON=py -3.14"
 )
 
 echo.
@@ -30,7 +32,16 @@ if errorlevel 1 (
 
 echo  [1/5] Python found successfully...
 
-echo  [2/5] Using installed dependencies...
+echo  [2/5] Checking dependencies...
+
+%PYTHON% -c "import webview, qrcode, PIL" >nul 2>&1
+if errorlevel 1 (
+    echo  [ERROR] Required packages are missing.
+    echo  Run: py -3.14 -m venv .venv
+    echo  Then: .venv\Scripts\python.exe -m pip install -r requirements.txt
+    pause
+    exit /b 1
+)
 
 if not exist "data" mkdir data
 if not exist "user_data" mkdir user_data

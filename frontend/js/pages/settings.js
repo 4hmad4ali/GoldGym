@@ -40,12 +40,14 @@ function saveSettings() {
         gym_address: document.getElementById('settingsAddress').value,
         gym_phone: document.getElementById('settingsPhone').value,
         gym_email: document.getElementById('settingsEmail').value,
-        currency: document.getElementById('settingsCurrency').value
+        currency: document.getElementById('settingsCurrency').value,
+        theme: ThemeManager.preference
     };
     
     var bridge = getBridge();
     bridge.save_settings(settings).then(function(result) {
         if (result.success) {
+            updateSettingsBrandPreview(settings.gym_name);
             showToast('موفق', 'تنظیمات با موفقیت ذخیره شد');
         } else {
             showToast('خطا', result.message || 'خطا در ذخیره تنظیمات', 'error');
@@ -128,6 +130,13 @@ function loadSettings() {
         document.getElementById('settingsPhone').value = settings.gym_phone || '+93 700 000 000';
         document.getElementById('settingsEmail').value = settings.gym_email || 'info@goldengym.af';
         document.getElementById('settingsCurrency').value = settings.currency || 'AFN';
+        updateSettingsBrandPreview(settings.gym_name || 'جیم گلدن');
+        ThemeManager.apply(settings.theme || ThemeManager.preference);
     });
     loadLogoSignaturePreviews();
+}
+
+function updateSettingsBrandPreview(gymName) {
+    var preview = document.getElementById('settingsGymNamePreview');
+    if (preview) preview.textContent = gymName || 'جیم گلدن';
 }

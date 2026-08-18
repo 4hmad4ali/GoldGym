@@ -1,0 +1,33 @@
+<!-- ==================== TRAINER FORM ==================== -->
+<div id="page-trainer-form" class="page-section team-form-page">
+    <div class="team-form-page__header">
+        <div>
+            <button class="team-form-page__back" type="button" onclick="navigate('coaches')"><i class="fas fa-arrow-right"></i> بازگشت به تیم</button>
+            <span class="team-form-page__kicker" id="trainerFormKicker">TRAINER PROFILE</span>
+            <h1 class="team-form-page__title" id="trainerFormTitle">افزودن مربی جدید</h1>
+            <p class="team-form-page__subtitle" id="trainerFormSubtitle">اطلاعات حرفه‌ای مربی و وضعیت همکاری او را ثبت کنید.</p>
+        </div>
+    </div>
+    <form id="trainerPageForm" class="team-form" onsubmit="event.preventDefault(); saveTrainer();">
+        <input type="hidden" id="trainerEditId">
+        <section class="team-form-card">
+            <div class="team-form-card__heading"><span><i class="fas fa-dumbbell"></i></span><div><h2>اطلاعات مربی</h2><p>مشخصات شخصی و زمینه تخصصی مربی را وارد کنید.</p></div></div>
+            <div class="team-form-grid form-gold">
+                <div><label class="form-label" for="tName">نام کامل <em>*</em></label><input type="text" class="form-control-gold" id="tName" required></div>
+                <div><label class="form-label" for="tFather">نام پدر <em>*</em></label><input type="text" class="form-control-gold" id="tFather" required></div>
+                <div><label class="form-label" for="tPhone">شماره تماس</label><input type="text" class="form-control-gold" id="tPhone" dir="ltr"></div>
+                <div><label class="form-label" for="tSpecialization">تخصص</label><input type="text" class="form-control-gold" id="tSpecialization" placeholder="مثلاً بدنسازی و فیتنس"></div>
+            </div>
+        </section>
+        <section class="team-form-card">
+            <div class="team-form-card__heading"><span><i class="fas fa-briefcase"></i></span><div><h2>اطلاعات همکاری</h2><p>وضعیت استخدام و شرایط مالی مربی را تکمیل کنید.</p></div></div>
+            <div class="team-form-grid form-gold">
+                <div><label class="form-label" for="tStatus">وضعیت</label><select class="form-control-gold" id="tStatus"><option value="Active">فعال</option><option value="Inactive">غیرفعال</option></select></div>
+                <div><label class="form-label" for="tSalary">حقوق (AFN)</label><input type="number" class="form-control-gold" id="tSalary" min="0" dir="ltr"></div>
+                <div><label class="form-label" for="tHireDate">تاریخ استخدام</label><input type="date" class="form-control-gold" id="tHireDate"></div>
+                <div class="team-form-grid__wide"><label class="form-label" for="tNotes">یادداشت</label><textarea class="form-control-gold" id="tNotes" rows="3" placeholder="توضیحات تکمیلی درباره مربی..."></textarea></div>
+            </div>
+        </section>
+        <div class="team-form__actions team-form-page__actions"><button class="team-form-page__cancel" type="button" onclick="navigate('coaches')">انصراف</button><button class="btn-gold team-form-page__save" type="submit"><i class="fas fa-save"></i> ذخیره مربی</button></div>
+    </form>
+</div>

@@ -37,6 +37,9 @@ class GoldenGymBridge:
         self.assets_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "assets"
         )
+        self.templates_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "frontend", "templates"
+        )
         for folder in ['members', 'staff', 'coaches']:
             os.makedirs(os.path.join(self.user_data_path, folder), exist_ok=True)
         os.makedirs(self.assets_path, exist_ok=True)
@@ -58,6 +61,24 @@ class GoldenGymBridge:
     def logout(self):
         self.current_user = None
         return {'success': True}
+
+    # ── FRONTEND TEMPLATES ─────────────────────────────────
+    def get_page_template(self, page_name):
+        """Return a vetted page template for the single-window desktop shell."""
+        allowed_pages = {
+            'dashboard', 'members', 'payments', 'attendance', 'coaches',
+            'equipment', 'cards', 'reports', 'notifications', 'settings', 'about',
+            'member-form', 'trainer-form', 'staff-form'
+        }
+        if page_name not in allowed_pages:
+            return ''
+
+        template_path = os.path.join(self.templates_path, page_name + '.html')
+        if not os.path.isfile(template_path):
+            return ''
+
+        with open(template_path, 'r', encoding='utf-8') as template_file:
+            return template_file.read()
     
     # ── SETTINGS ──────────────────────────────────────────
     def get_settings(self):
@@ -655,6 +676,14 @@ class GoldenGymBridge:
             
             staff = db.get_staff_by_code(code)
             if staff:
+                if staff.get('status') != 'Active':
+                    return {
+                        'valid': False,
+                        'type': 'staff',
+                        'type_label': 'کارمند',
+                        'data': staff,
+                        'message': 'ورود مجاز نیست: وضعیت کارمند فعال نیست'
+                    }
                 return {
                     'valid': True,
                     'type': 'staff',
@@ -665,6 +694,14 @@ class GoldenGymBridge:
             
             trainer = db.get_trainer_by_code(code)
             if trainer:
+                if trainer.get('status') != 'Active':
+                    return {
+                        'valid': False,
+                        'type': 'trainer',
+                        'type_label': 'مربی',
+                        'data': trainer,
+                        'message': 'ورود مجاز نیست: وضعیت مربی فعال نیست'
+                    }
                 return {
                     'valid': True,
                     'type': 'trainer',
@@ -684,7 +721,7 @@ class GoldenGymBridge:
     def verify_card_by_data(self, qr_data):
         try:
             parts = qr_data.strip().split('|')
-            if len(parts) < 2 or parts[0] != 'GGYM':
+            if len(parts) < 2 or parts[0] not in ('GGYM', 'GGYM-STF', 'GGYM-TRN'):
                 return {'valid': False, 'message': 'فرمت QR نامعتبر است'}
             
             code = parts[1]

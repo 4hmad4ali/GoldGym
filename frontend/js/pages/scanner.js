@@ -8,7 +8,7 @@ function verifyQR() {
     var result = document.getElementById('qrResult');
     
     if (!data) {
-        result.innerHTML = '<p class="text-muted">لطفاً کد ID یا داده‌های QR را وارد کنید</p>';
+        result.innerHTML = scannerPlaceholder('fa-keyboard', 'اطلاعاتی وارد نشده است', 'کد شناسایی یا داده QR را وارد کنید.');
         return;
     }
     
@@ -27,7 +27,7 @@ function verifyQR() {
         }
     }
     
-    result.innerHTML = '<div class="text-center"><div class="spinner-border text-gold" role="status"></div><p class="text-muted mt-2">در حال بررسی...</p></div>';
+    result.innerHTML = scannerPlaceholder('fa-spinner fa-spin', 'در حال بررسی کارت', 'لطفاً چند لحظه صبر کنید.');
     
     bridge.verify_card({ code: code }).then(function(verification) {
         if (verification.valid) {
@@ -45,7 +45,7 @@ function verifyByCode() {
     var result = document.getElementById('qrResult');
     
     if (!code) {
-        result.innerHTML = '<p class="text-muted">لطفاً کد ID را وارد کنید</p>';
+        result.innerHTML = scannerPlaceholder('fa-keyboard', 'کد وارد نشده است', 'کد شناسایی کارت را وارد کنید.');
         return;
     }
     
@@ -61,7 +61,7 @@ function uploadCardImage() {
     var preview = document.getElementById('imagePreview');
     
     if (!file) {
-        result.innerHTML = '<p class="text-muted">لطفاً یک تصویر انتخاب کنید</p>';
+        result.innerHTML = scannerPlaceholder('fa-image', 'تصویری انتخاب نشده است', 'یک تصویر شامل QR کارت انتخاب کنید.');
         return;
     }
     
@@ -72,7 +72,7 @@ function uploadCardImage() {
     };
     reader.readAsDataURL(file);
     
-    result.innerHTML = '<div class="text-center"><div class="spinner-border text-gold" role="status"></div><p class="text-muted mt-2">در حال اسکن تصویر...</p></div>';
+    result.innerHTML = scannerPlaceholder('fa-spinner fa-spin', 'در حال اسکن تصویر', 'در حال خواندن QR کارت هستیم.');
     
     var bridge = getBridge();
     var reader2 = new FileReader();
@@ -161,7 +161,7 @@ function showErrorResult(title, message) {
 function clearScanner() {
     document.getElementById('qrScanData').value = '';
     document.getElementById('codeVerifyInput').value = '';
-    document.getElementById('qrResult').innerHTML = '<p class="text-muted text-center">نتیجه تأیید در اینجا نمایش داده می‌شود...</p>';
+    document.getElementById('qrResult').innerHTML = scannerPlaceholder('fa-qrcode', 'منتظر بررسی کارت', 'کد، داده QR یا تصویر کارت را وارد کنید.');
     document.getElementById('imagePreview').innerHTML = '';
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('cardImageUpload').value = '';
@@ -171,4 +171,8 @@ function clearImagePreview() {
     document.getElementById('imagePreview').innerHTML = '';
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('cardImageUpload').value = '';
+}
+
+function scannerPlaceholder(icon, title, message) {
+    return '<div class="access-result__placeholder"><span><i class="fas ' + icon + '"></i></span><strong>' + title + '</strong><p>' + message + '</p></div>';
 }

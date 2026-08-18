@@ -5,368 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏋 جیم گلدن — Golden Gym v4.0</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('goldenGymTheme') || 'dark';
+                document.documentElement.dataset.theme = savedTheme === 'light' ? 'light' : 'dark';
+            } catch (e) {
+                document.documentElement.dataset.theme = 'dark';
+            }
+        })();
+    </script>
     
-    <style>
-        /* ─── Full Screen Reset ─── */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { 
-            width: 100%; 
-            height: 100%; 
-            overflow: hidden;
-            font-family: 'Segoe UI', 'Tahoma', sans-serif;
-            background: #0D1117;
-            color: #EEF2FF;
-            direction: rtl;
-        }
-        
-        /* ─── Window Controls ─── */
-        .window-controls {
-            position: fixed; top: 0; left: 0; right: 0; height: 32px;
-            background: #0D1117; display: flex; align-items: center;
-            justify-content: flex-end; padding: 0 12px; z-index: 9999;
-            -webkit-app-region: drag; border-bottom: 1px solid #1A2030;
-        }
-        .window-controls .window-title {
-            position: absolute; left: 50%; transform: translateX(-50%);
-            color: #9BA8C0; font-size: 13px; font-weight: 500;
-            -webkit-app-region: drag; cursor: default;
-        }
-        .window-controls .window-title i { color: #FFB900; margin-left: 6px; }
-        .window-btn {
-            -webkit-app-region: no-drag; background: transparent; border: none;
-            color: #9BA8C0; width: 32px; height: 32px; border-radius: 4px;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 14px; transition: all 0.2s ease;
-        }
-        .window-btn:hover { background: #2A3348; color: #EEF2FF; }
-        .window-btn.close:hover { background: #E81123; color: white; }
-        .window-controls .spacer { flex: 1; }
-        
-        /* ─── Login Screen ─── */
-        #loginScreen {
-            display: flex; align-items: center; justify-content: center;
-            width: 100%; height: 100%; padding: 20px; padding-top: 52px;
-            background: linear-gradient(135deg, #0D1117 0%, #1A2030 50%, #0D1117 100%);
-        }
-        .login-card {
-            background: #141922; border-radius: 20px; padding: 40px 32px;
-            width: 100%; max-width: 420px;
-            border: 1px solid rgba(255, 185, 0, 0.15);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-        }
-        .login-header { text-align: center; margin-bottom: 32px; }
-        .gym-icon { font-size: 64px; color: #FFB900; display: block; margin-bottom: 12px; animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        .gym-title { color: #FFB900; font-size: 32px; font-weight: bold; margin: 0; }
-        .gym-subtitle { color: #9BA8C0; font-size: 14px; margin: 4px 0 0; }
-        .gym-version { color: #5C6780; font-size: 11px; background: #1A2030; display: inline-block; padding: 2px 12px; border-radius: 20px; margin-top: 6px; }
-        
-        .form-control-gold {
-            background: #1E2535; border: 1px solid #2A3348; color: #EEF2FF;
-            padding: 12px 16px; border-radius: 10px; width: 100%;
-            transition: all 0.3s ease;
-        }
-        .form-control-gold:focus { border-color: #FFB900; box-shadow: 0 0 0 3px rgba(255,185,0,0.15); outline: none; }
-        .form-control-gold::placeholder { color: #5C6780; }
-        .form-label { color: #9BA8C0; font-size: 13px; font-weight: 500; margin-bottom: 4px; display: block; }
-        
-        .btn-gold {
-            background: #FFB900; color: #0D1117; font-weight: bold;
-            padding: 14px 24px; border: none; border-radius: 10px;
-            transition: all 0.3s ease; cursor: pointer; width: 100%; font-size: 16px;
-        }
-        .btn-gold:hover { background: #FFD166; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,185,0,0.3); }
-        
-        .form-check { display: flex; align-items: center; gap: 8px; }
-        .form-check-input { margin: 0; width: 18px; height: 18px; accent-color: #FFB900; cursor: pointer; }
-        .form-check-label { color: #9BA8C0; font-size: 13px; cursor: pointer; }
-        .login-footer { text-align: center; margin-top: 20px; color: #5C6780; font-size: 12px; border-top: 1px solid #2A3348; padding-top: 16px; }
-        #loginError { display: none; padding: 10px; border-radius: 8px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); margin-top: 12px; color: #EF4444; }
-        
-        /* ─── Main App ─── */
-        #mainApp { 
-            display: none; 
-            width: 100%; 
-            height: 100%; 
-            overflow: hidden; 
-            flex-direction: column; 
-            padding-top: 32px; 
-        }
-        #mainApp.show { display: flex; }
-        
-        /* ─── Sidebar ─── */
-        .sidebar {
-            position: fixed; right: 0; top: 32px; bottom: 0;
-            width: 220px; background: #141922; border-left: 1px solid #2A3348;
-            overflow-y: auto; padding: 12px 0; z-index: 100;
-            transition: all 0.3s;
-        }
-        .sidebar .brand {
-            text-align: center; padding: 12px; border-bottom: 1px solid #2A3348;
-            margin-bottom: 12px;
-        }
-        .sidebar .brand i { font-size: 28px; color: #FFB900; }
-        .sidebar .brand h4 { color: #FFB900; margin: 4px 0 0; font-size: 16px; }
-        .sidebar .nav-item {
-            padding: 8px 16px; cursor: pointer; transition: all 0.3s;
-            border-right: 3px solid transparent; display: flex;
-            align-items: center; gap: 10px; color: #9BA8C0;
-            text-decoration: none; font-size: 13px;
-        }
-        .sidebar .nav-item:hover { background: rgba(255,185,0,0.05); color: #EEF2FF; }
-        .sidebar .nav-item.active { border-right-color: #FFB900; background: rgba(255,185,0,0.08); color: #FFB900; }
-        .sidebar .nav-item i { width: 18px; font-size: 14px; }
-        .sidebar .nav-item .badge {
-            background: #FFB900; color: #0D1117; font-size: 9px;
-            padding: 1px 6px; border-radius: 10px; margin-right: auto;
-        }
-        
-        /* ─── Main Content ─── */
-        .main-content {
-            margin-right: 220px; height: 100vh; overflow-y: auto;
-            padding: 16px 20px 80px;
-        }
-        
-        /* ─── Page Sections ─── */
-        .page-section { display: none; }
-        .page-section.active { display: block; }
-        .page-title {
-            color: #FFB900; font-weight: 700; margin-bottom: 20px;
-            border-bottom: 2px solid rgba(255,185,0,0.1); padding-bottom: 10px;
-            font-size: 22px;
-        }
-        
-        /* ─── Quick Stats ─── */
-        .stat-card {
-            background: #141922; border-radius: 12px; padding: 16px;
-            border: 1px solid #2A3348; transition: all 0.3s;
-        }
-        .stat-card:hover { border-color: #FFB900; transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
-        .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 8px; }
-        .stat-icon.gold { background: rgba(255,185,0,0.15); color: #FFB900; }
-        .stat-icon.green { background: rgba(46,204,113,0.15); color: #2ecc71; }
-        .stat-icon.red { background: rgba(231,76,60,0.15); color: #e74c3c; }
-        .stat-icon.blue { background: rgba(52,152,219,0.15); color: #3498db; }
-        .stat-number { font-size: 24px; font-weight: 700; }
-        .stat-label { color: #9BA8C0; font-size: 12px; }
-        
-        /* ─── Tables ─── */
-        .table-gold {
-            background: #141922; border-radius: 12px; overflow: hidden;
-            border: 1px solid #2A3348; width: 100%; border-collapse: collapse;
-        }
-        .table-gold thead { background: rgba(255,185,0,0.06); }
-        .table-gold th { color: #FFB900; font-weight: 600; padding: 10px 14px; border-bottom: 2px solid rgba(255,185,0,0.1); }
-        .table-gold td { padding: 10px 14px; border-bottom: 1px solid rgba(255,185,0,0.05); color: #EEF2FF; vertical-align: middle; }
-        .table-gold tr:hover td { background: rgba(255,185,0,0.02); }
-        
-        /* ─── Forms ─── */
-        .form-gold .form-control, .form-gold .form-select {
-            background: #1E2535; border: 1px solid #2A3348; color: #EEF2FF;
-            border-radius: 8px; padding: 8px 12px;
-        }
-        .form-gold .form-control:focus, .form-gold .form-select:focus {
-            border-color: #FFB900; box-shadow: 0 0 0 3px rgba(255,185,0,0.1);
-            background: #1E2535; color: #EEF2FF;
-        }
-        .form-gold .form-label { color: #9BA8C0; font-weight: 500; font-size: 12px; }
-        .form-gold .form-select option { background: #0D1117; }
-        
-        /* ─── Badges ─── */
-        .badge-gold { background: #FFB900; color: #0D1117; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .badge-active { background: rgba(46,204,113,0.15); color: #2ecc71; padding: 3px 10px; border-radius: 12px; font-size: 11px; }
-        .badge-expired { background: rgba(231,76,60,0.15); color: #e74c3c; padding: 3px 10px; border-radius: 12px; font-size: 11px; }
-        .badge-warning { background: rgba(241,196,15,0.15); color: #f1c40f; padding: 3px 10px; border-radius: 12px; font-size: 11px; }
-        .badge-info { background: rgba(52,152,219,0.15); color: #3498db; padding: 3px 10px; border-radius: 12px; font-size: 11px; }
-        .badge-purple { background: rgba(155,89,182,0.15); color: #9b59b6; padding: 3px 10px; border-radius: 12px; font-size: 11px; }
-        
-        /* ─── Buttons ─── */
-        .btn-gold-small {
-            background: #FFB900; color: #0D1117; font-weight: 600;
-            border: none; padding: 4px 12px; border-radius: 6px;
-            font-size: 12px; transition: all 0.3s; cursor: pointer;
-        }
-        .btn-gold-small:hover { background: #FFD166; transform: translateY(-1px); }
-        .btn-outline-gold-small {
-            background: transparent; color: #FFB900; border: 1px solid #FFB900;
-            padding: 4px 12px; border-radius: 6px; font-size: 12px;
-            transition: all 0.3s; cursor: pointer;
-        }
-        .btn-outline-gold-small:hover { background: #FFB900; color: #0D1117; }
-        .btn-danger-small {
-            background: #e74c3c; color: white; border: none;
-            padding: 4px 12px; border-radius: 6px; font-size: 12px;
-            transition: all 0.3s; cursor: pointer;
-        }
-        .btn-danger-small:hover { background: #c0392b; }
-        
-        /* ─── Modal ─── */
-        .modal-content { background: #141922; border: 1px solid #2A3348; border-radius: 12px; }
-        .modal-header { border-bottom: 1px solid #2A3348; padding: 12px 20px; }
-        .modal-header .modal-title { color: #FFB900; font-weight: bold; }
-        .modal-header .btn-close { filter: invert(1); opacity: 0.7; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
-        .modal-header .btn-close:hover { opacity: 1; }
-        .modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
-        .modal-footer { border-top: 1px solid #2A3348; padding: 12px 20px; display: flex; gap: 8px; justify-content: flex-end; }
-        .modal-backdrop { background: rgba(0,0,0,0.7); }
-        
-        /* ─── Toast ─── */
-        .toast-container { position: fixed; bottom: 20px; left: 20px; z-index: 9999; }
-        .toast-gold { background: #141922; border: 1px solid rgba(255,185,0,0.2); color: #EEF2FF; border-radius: 10px; }
-        .toast-gold .toast-header { background: rgba(255,185,0,0.08); color: #FFB900; border-bottom: 1px solid rgba(255,185,0,0.1); }
-        
-        /* ─── Gym Card ─── */
-        .gym-card {
-            width: 100%; max-width: 400px;
-            background: linear-gradient(145deg, #ffffff 0%, #f8f6f0 100%);
-            border-radius: 16px; padding: 0;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,185,0,0.3);
-            overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif;
-            direction: rtl; margin: 0 auto;
-        }
-        .gym-card .card-header-gold {
-            background: linear-gradient(135deg, #FFB900, #cc9400);
-            padding: 12px 16px; display: flex; justify-content: space-between;
-            align-items: center; border-bottom: 3px solid #b8860b;
-        }
-        .gym-card .card-header-gold .gym-name {
-            color: #1a1a2e; font-size: 16px; font-weight: 800;
-        }
-        .gym-card .card-header-gold .gym-logo {
-            width: 36px; height: 36px; background: #1a1a2e;
-            border-radius: 50%; display: flex; align-items: center;
-            justify-content: center; color: #FFB900; font-size: 18px;
-            border: 2px solid #fff;
-        }
-        .gym-card .card-body { padding: 16px 20px; }
-        .gym-card .member-id {
-            background: #f0ede5; padding: 4px 12px; border-radius: 20px;
-            display: inline-block; font-size: 11px; font-weight: 700;
-            color: #2c2c2c; border: 1px solid #ddd6c8;
-        }
-        .gym-card .member-id span { color: #cc9400; }
-        .gym-card .member-photo {
-            width: 60px; height: 60px; border-radius: 50%;
-            background: linear-gradient(135deg, #e8e3d8, #d5cec0);
-            margin: 8px auto; display: flex; align-items: center;
-            justify-content: center; font-size: 28px; color: #8a7e6a;
-            border: 3px solid #FFB900;
-        }
-        .gym-card .member-name { font-size: 18px; font-weight: 700; color: #1a1a2e; text-align: center; }
-        .gym-card .member-father { font-size: 12px; color: #666; text-align: center; }
-        .gym-card .info-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;
-            font-size: 11px; margin: 8px 0;
-        }
-        .gym-card .info-grid .info-item {
-            display: flex; justify-content: space-between;
-            padding: 3px 0; border-bottom: 1px dashed #eee;
-        }
-        .gym-card .info-grid .info-item .label { color: #888; font-weight: 500; font-size: 9px; text-transform: uppercase; }
-        .gym-card .info-grid .info-item .value { color: #1a1a2e; font-weight: 600; font-size: 11px; }
-        .gym-card .qr-signature {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-top: 10px; padding-top: 10px; border-top: 2px solid #f0ede5;
-        }
-        .gym-card .qr-code {
-            background: #f5f2eb; padding: 4px 8px; border-radius: 6px;
-            display: flex; align-items: center; gap: 6px;
-            font-size: 9px; color: #555; border: 1px solid #e0d8cc;
-        }
-        .gym-card .qr-code i { font-size: 24px; color: #cc9400; }
-        .gym-card .signature-area { text-align: left; font-size: 9px; color: #999; }
-        .gym-card .signature-area .sig-line { width: 60px; height: 2px; background: #ccc; margin-top: 2px; margin-right: auto; }
-        .gym-card .card-footer {
-            background: #f5f2eb; padding: 6px 16px; display: flex;
-            justify-content: space-between; font-size: 8px; color: #999;
-            border-top: 1px solid #e8e0d4;
-        }
-        .gym-card .card-footer .validity { color: #cc9400; font-weight: 600; }
-        
-        /* ─── Responsive ─── */
-        @media (max-width: 768px) {
-            .sidebar { width: 60px; }
-            .sidebar .brand h4, .sidebar .nav-item span { display: none; }
-            .sidebar .nav-item { justify-content: center; padding: 10px; }
-            .main-content { margin-right: 60px; padding: 12px; }
-            .window-controls .window-title { font-size: 11px; }
-            .gym-card { max-width: 100%; }
-            .gym-card .info-grid { grid-template-columns: 1fr; }
-        }
-        
-        @media (max-width: 576px) {
-            .stat-card { padding: 12px; }
-            .stat-number { font-size: 18px; }
-            .login-card { padding: 24px 16px; }
-            .gym-title { font-size: 24px; }
-        }
-        
-        /* ─── Scrollbar ─── */
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #0D1117; }
-        ::-webkit-scrollbar-thumb { background: #2A3348; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #FFB900; }
-        
-        /* ─── Utilities ─── */
-        .text-gold { color: #FFB900 !important; }
-        .text-secondary { color: #9BA8C0 !important; }
-        .text-muted { color: #5C6780 !important; }
-        .text-success { color: #2ecc71 !important; }
-        .text-danger { color: #e74c3c !important; }
-        .text-warning { color: #f1c40f !important; }
-        .text-info { color: #3498db !important; }
-        .text-purple { color: #9b59b6 !important; }
-        .w-100 { width: 100%; }
-        .mt-2 { margin-top: 0.5rem; }
-        .mt-3 { margin-top: 1rem; }
-        .mb-2 { margin-bottom: 0.5rem; }
-        .mb-3 { margin-bottom: 1rem; }
-        .mb-4 { margin-bottom: 1.5rem; }
-        .me-1 { margin-left: 0.25rem; }
-        .me-2 { margin-left: 0.5rem; }
-        .ms-auto { margin-right: auto; }
-        .d-flex { display: flex; }
-        .d-none { display: none !important; }
-        .justify-content-between { justify-content: space-between; }
-        .align-items-center { align-items: center; }
-        .flex-wrap { flex-wrap: wrap; }
-        .gap-2 { gap: 0.5rem; }
-        .gap-3 { gap: 1rem; }
-        .text-center { text-align: center; }
-        .text-start { text-align: right; }
-        .text-end { text-align: left; }
-        
-        .spinner-border {
-            display: inline-block; width: 2rem; height: 2rem;
-            border: 0.25em solid currentColor; border-right-color: transparent;
-            border-radius: 50%; animation: spinner-border 0.75s linear infinite;
-        }
-        @keyframes spinner-border { to { transform: rotate(360deg); } }
-        .visually-hidden {
-            position: absolute !important; width: 1px !important;
-            height: 1px !important; padding: 0 !important;
-            margin: -1px !important; overflow: hidden !important;
-            clip: rect(0,0,0,0) !important; white-space: nowrap !important;
-            border: 0 !important;
-        }
-        
-        .chart-container { background: #141922; border-radius: 12px; padding: 16px; border: 1px solid #2A3348; min-height: 280px; }
-        #imagePreview img { max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid #2A3348; }
-        
-        /* ─── Nav Tabs ─── */
-        .nav-tabs-gold .nav-link {
-            color: #9BA8C0; border: none; border-bottom: 3px solid transparent;
-            padding: 8px 16px; border-radius: 0;
-        }
-        .nav-tabs-gold .nav-link:hover { color: #EEF2FF; }
-        .nav-tabs-gold .nav-link.active {
-            color: #FFB900; background: transparent; border-bottom-color: #FFB900;
-        }
-    </style>
+    <link rel="stylesheet" href="css/app.css">
+    <script id="cardPrintStyles" type="text/plain">
+        @page { size: 85.6mm 54mm; margin: 0; }
+        * { box-sizing: border-box; }
+        html, body { width: 85.6mm; height: 54mm; margin: 0; padding: 0; background: #fff; }
+        body { font-family: Vazirmatn, Tahoma, sans-serif; }
+        .print-card-sheet { width: 85.6mm; height: 54mm; overflow: hidden; }
+        .professional-card { position: relative; width: 85.6mm; height: 54mm; overflow: hidden; padding: 5mm 5.5mm 4mm; color: #142035; background: #f8f7f2; direction: rtl; font-family: Vazirmatn, Tahoma, sans-serif; }
+        .professional-card__accent { position: absolute; top: 0; right: 0; left: 0; height: 3.2mm; background: linear-gradient(90deg, #ca9200, #ffd257, #ca9200); }
+        .professional-card__header, .professional-card__main, .professional-card__footer { display: flex; align-items: center; justify-content: space-between; }
+        .professional-card__brand { display: flex; align-items: center; gap: 2.2mm; min-width: 0; }
+        .professional-card__logo { width: 9mm; height: 9mm; display: grid; place-items: center; flex: 0 0 9mm; overflow: hidden; border: .45mm solid #d6a619; border-radius: 2.2mm; color: #d5a51b; background: #152036; font-size: 4mm; }
+        .professional-card__logo img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+        .professional-card__brand strong { display: block; max-width: 38mm; overflow: hidden; color: #142035; font-size: 3.15mm; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+        .professional-card__brand span { display: block; margin-top: .6mm; color: #7b8491; font-family: Arial, sans-serif; font-size: 1.35mm; letter-spacing: .16mm; }
+        .professional-card__kind { color: #a67900; font-size: 1.65mm; font-weight: 700; white-space: nowrap; }
+        .professional-card__kind i { margin-left: 1mm; }
+        .professional-card__main { align-items: flex-start; margin-top: 2.6mm; }
+        .professional-card__person { display: flex; align-items: center; gap: 2.2mm; min-width: 0; }
+        .professional-card__avatar { width: 10mm; height: 10mm; display: grid; place-items: center; flex: 0 0 10mm; border: .45mm solid #e2bd54; border-radius: 50%; color: #fff; background: #17243a; font-size: 4mm; font-weight: 800; }
+        .professional-card__person h2 { max-width: 36mm; overflow: hidden; margin: 0; color: #142035; font-size: 3.3mm; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+        .professional-card__person p { margin: .6mm 0; color: #6b7480; font-size: 1.7mm; }
+        .professional-card__person code { color: #9b7100; font-family: Consolas, monospace; font-size: 1.65mm; font-weight: 700; }
+        .professional-card__qr { display: grid; justify-items: center; gap: .7mm; color: #7b8491; font-size: 1.25mm; text-align: center; }
+        .professional-card__qr img, .professional-card__qr > i { width: 12.5mm; height: 12.5mm; padding: .6mm; border: .35mm solid #d7dce3; border-radius: 1.5mm; background: #fff; object-fit: contain; }
+        .professional-card__qr > i { display: grid; place-items: center; color: #17243a; font-size: 7mm; }
+        .professional-card__details { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1mm; margin-top: 2.2mm; padding: 1.6mm 0; border-top: .25mm solid #dfe2e5; border-bottom: .25mm solid #dfe2e5; }
+        .professional-card__details span, .professional-card__details strong { display: block; }
+        .professional-card__details span { color: #89919c; font-size: 1.35mm; }
+        .professional-card__details strong { overflow: hidden; margin-top: .55mm; color: #26364d; font-size: 1.65mm; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .professional-card__status i { margin-left: .8mm; font-size: 1.1mm; }
+        .professional-card__status.is-active { color: #168051; }.professional-card__status.is-inactive { color: #b83d4b; }
+        .professional-card__footer { align-items: flex-end; margin-top: 1.7mm; }
+        .professional-card__signature { display: grid; justify-items: center; gap: .35mm; min-width: 22mm; color: #7b8491; font-size: 1.25mm; }
+        .professional-card__signature img { width: 19mm; height: 5.5mm; object-fit: contain; }
+        .professional-card__signature > span:first-child { display: grid; min-height: 5.5mm; place-items: center; color: #adb3bb; font-size: 1.4mm; }
+        .professional-card__footer small { color: #949ba4; font-size: 1.15mm; }
+    </script>
 </head>
 <body>
 
@@ -405,391 +99,48 @@
     <div id="mainApp">
         <!-- Sidebar -->
         <nav class="sidebar">
-            <div class="brand">
-                <i class="fas fa-dumbbell"></i>
-                <h4>جیم گلدن</h4>
+            <div class="sidebar-brand">
+                <div class="sidebar-brand__mark"><i class="fas fa-dumbbell"></i></div>
+                <div class="sidebar-brand__copy"><div class="sidebar-brand__name">جیم گلدن</div><div class="sidebar-brand__caption">GYM MANAGEMENT</div></div>
             </div>
-            <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i><span>داشبورد</span></div>
-            <div class="nav-item" data-page="members"><i class="fas fa-users"></i><span>اعضا</span><span class="badge" id="memberCountBadge">0</span></div>
-            <div class="nav-item" data-page="payments"><i class="fas fa-money-bill-wave"></i><span>پرداخت‌ها</span></div>
-            <div class="nav-item" data-page="attendance"><i class="fas fa-clipboard-check"></i><span>حضور و غیاب</span></div>
-            <div class="nav-item" data-page="coaches"><i class="fas fa-chalkboard-teacher"></i><span>مربیان و کارکنان</span></div>
-            <div class="nav-item" data-page="equipment"><i class="fas fa-dumbbell"></i><span>تجهیزات</span></div>
-            <div class="nav-item" data-page="cards"><i class="fas fa-id-card"></i><span>کارت‌ها و اسکنر</span></div>
-            <div class="nav-item" data-page="reports"><i class="fas fa-file-alt"></i><span>گزارشات</span></div>
-            <div class="nav-item" data-page="notifications"><i class="fas fa-bell"></i><span>اعلانات</span><span class="badge" id="notifBadge">0</span></div>
-            <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i><span>تنظیمات</span></div>
-            <div class="nav-item" data-page="about"><i class="fas fa-info-circle"></i><span>درباره</span></div>
-            <div style="padding:10px 16px;color:#9BA8C0;font-size:12px;border-top:1px solid #2A3348;margin-top:8px;">
-                <i class="fas fa-user-circle"></i> <span id="userNameDisplay">مدیر سیستم</span>
+            <button class="sidebar-primary-action" type="button" onclick="openNewMemberFromSidebar()"><i class="fas fa-user-plus"></i><span>عضو جدید</span></button>
+
+            <div class="sidebar-nav">
+                <div class="sidebar-nav-label">نمای کلی</div>
+                <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i><span>داشبورد</span></div>
+
+                <div class="sidebar-nav-label">مدیریت باشگاه</div>
+                <div class="nav-item" data-page="members"><i class="fas fa-users"></i><span>اعضا</span><span class="badge" id="memberCountBadge">0</span></div>
+                <div class="nav-item" data-page="coaches"><i class="fas fa-person-running"></i><span>مربیان و کارکنان</span></div>
+                <div class="nav-item" data-page="equipment"><i class="fas fa-dumbbell"></i><span>تجهیزات</span></div>
+                <div class="nav-item" data-page="cards"><i class="fas fa-id-card"></i><span>کارت‌ها و اسکنر</span></div>
+
+                <div class="sidebar-nav-label">عملیات و گزارش</div>
+                <div class="nav-item" data-page="payments"><i class="fas fa-money-bill-wave"></i><span>پرداخت‌ها</span></div>
+                <div class="nav-item" data-page="attendance"><i class="fas fa-clipboard-check"></i><span>حضور و غیاب</span></div>
+                <div class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i><span>گزارشات</span></div>
+                <div class="nav-item" data-page="notifications"><i class="fas fa-bell"></i><span>اعلانات</span><span class="badge" id="notifBadge">0</span></div>
+
+                <div class="sidebar-nav-label">سیستم</div>
+                <div class="nav-item" data-page="settings"><i class="fas fa-sliders"></i><span>تنظیمات</span></div>
+                <div class="nav-item" data-page="about"><i class="fas fa-circle-info"></i><span>درباره برنامه</span></div>
             </div>
-            <div class="nav-item" onclick="handleLogout()" style="padding-top:6px;">
-                <i class="fas fa-sign-out-alt" style="color:#e74c3c;"></i><span style="color:#e74c3c;">خروج</span>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-user__avatar"><i class="fas fa-user"></i></div>
+                    <div class="sidebar-user__copy"><span class="sidebar-user__name" id="userNameDisplay">مدیر سیستم</span><span class="sidebar-user__role">مدیر سیستم</span></div>
+                </div>
+                <div class="nav-item sidebar-logout" onclick="handleLogout()">
+                    <i class="fas fa-arrow-right-from-bracket"></i><span>خروج از حساب</span>
+                </div>
             </div>
         </nav>
 
         <!-- Main Content -->
         <div class="main-content" id="mainContent">
 
-            <!-- ==================== DASHBOARD ==================== -->
-            <div id="page-dashboard" class="page-section active">
-                <h2 class="page-title"><i class="fas fa-chart-pie me-2"></i>داشبورد</h2>
-                <div class="row g-3 mb-4" id="dashboardStats">
-                    <div class="col-xl-2 col-lg-3 col-md-4 col-6"><div class="stat-card"><div class="stat-icon gold"><i class="fas fa-users"></i></div><div class="stat-number" id="statTotalMembers">0</div><div class="stat-label">کل اعضا</div></div></div>
-                    <div class="col-xl-2 col-lg-3 col-md-4 col-6"><div class="stat-card"><div class="stat-icon green"><i class="fas fa-user-check"></i></div><div class="stat-number" id="statActiveMembers">0</div><div class="stat-label">اعضای فعال</div></div></div>
-                    <div class="col-xl-2 col-lg-3 col-md-4 col-6"><div class="stat-card"><div class="stat-icon red"><i class="fas fa-user-times"></i></div><div class="stat-number" id="statExpiredMembers">0</div><div class="stat-label">اعضای منقضی</div></div></div>
-                    <div class="col-xl-2 col-lg-3 col-md-4 col-6"><div class="stat-card"><div class="stat-icon blue"><i class="fas fa-chalkboard-teacher"></i></div><div class="stat-number" id="statTotalTrainers">0</div><div class="stat-label">مربیان</div></div></div>
-                    <div class="col-xl-2 col-lg-3 col-md-4 col-6"><div class="stat-card"><div class="stat-icon gold"><i class="fas fa-user-tie"></i></div><div class="stat-number" id="statTotalStaff">0</div><div class="stat-label">کارکنان</div></div></div>
-                    <div class="col-xl-2 col-lg-3 col-md-4 col-6"><div class="stat-card"><div class="stat-icon gold"><i class="fas fa-money-bill"></i></div><div class="stat-number" id="statTotalIncome">0</div><div class="stat-label">درآمد کل (AFN)</div></div></div>
-                </div>
-                <div class="row g-3">
-                    <div class="col-lg-8"><div class="stat-card"><h6 class="text-gold mb-3"><i class="fas fa-chart-bar me-2"></i>درآمد ماهانه</h6><div class="chart-container"><canvas id="incomeChart" height="250"></canvas></div></div></div>
-                    <div class="col-lg-4">
-                        <div class="stat-card">
-                            <h6 class="text-gold mb-3"><i class="fas fa-bolt me-2"></i>اقدامات سریع</h6>
-                            <div class="d-grid gap-2">
-                                <button class="btn-gold" onclick="navigate('members')"><i class="fas fa-user-plus me-2"></i>افزودن عضو</button>
-                                <button class="btn-gold" onclick="navigate('payments')"><i class="fas fa-hand-holding-usd me-2"></i>ثبت پرداخت</button>
-                                <button class="btn-gold" onclick="navigate('attendance')"><i class="fas fa-check-double me-2"></i>ثبت حضور</button>
-                                <button class="btn-gold" onclick="navigate('cards')"><i class="fas fa-qrcode me-2"></i>اسکنر کارت</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="row g-3 mt-3">
-                    <div class="col-12">
-                        <div class="stat-card">
-                            <h6 class="text-gold mb-3"><i class="fas fa-clock me-2"></i>اعضای در حال انقضا (۷ روز آینده)</h6>
-                            <div class="table-responsive">
-                                <table class="table-gold">
-                                    <thead><tr><th>کد</th><th>نام</th><th>تاریخ انقضا</th><th>وضعیت</th></tr></thead>
-                                    <tbody id="expiringMembersBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== MEMBERS ==================== -->
-            <div id="page-members" class="page-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="page-title mb-0"><i class="fas fa-users me-2"></i>مدیریت اعضا</h2>
-                    <button class="btn-gold" onclick="openMemberModal()"><i class="fas fa-plus me-2"></i>عضو جدید</button>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4"><input type="text" class="form-control-gold" id="memberSearch" placeholder="جستجو..." oninput="filterMembers()"></div>
-                    <div class="col-md-3">
-                        <select class="form-control-gold" id="memberStatusFilter" onchange="filterMembers()">
-                            <option value="all">همه وضعیت‌ها</option>
-                            <option value="Active">فعال</option>
-                            <option value="Expired">منقضی</option>
-                            <option value="Inactive">غیرفعال</option>
-                        </select>
-                    </div>
-                    <div class="col-md-5 text-md-end"><span class="badge-gold me-2" id="memberStats">کل: 0 | فعال: 0 | منقضی: 0 | مرد: 0 | زن: 0</span></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table-gold">
-                        <thead><tr><th>کد</th><th>نام</th><th>نام پدر</th><th>شماره</th><th>طرح</th><th>تاریخ انقضا</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-                        <tbody id="membersBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ==================== PAYMENTS ==================== -->
-            <div id="page-payments" class="page-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="page-title mb-0"><i class="fas fa-money-bill-wave me-2"></i>مدیریت پرداخت‌ها</h2>
-                    <button class="btn-gold" onclick="openPaymentModal()"><i class="fas fa-plus me-2"></i>پرداخت جدید</button>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-3"><input type="text" class="form-control-gold" id="paymentSearch" placeholder="جستجو..." oninput="filterPayments()"></div>
-                    <div class="col-md-9 text-md-end"><span class="badge-gold me-2" id="paymentStats">امروز: 0 | این ماه: 0 | امسال: 0 | کل: 0 AFN</span></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table-gold">
-                        <thead><tr><th>شماره</th><th>عضو</th><th>مبلغ (AFN)</th><th>روش</th><th>تاریخ</th><th>عملیات</th></tr></thead>
-                        <tbody id="paymentsBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ==================== ATTENDANCE ==================== -->
-            <div id="page-attendance" class="page-section">
-                <h2 class="page-title"><i class="fas fa-clipboard-check me-2"></i>حضور و غیاب</h2>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <div class="input-group">
-                            <input type="text" class="form-control-gold" id="attendanceCode" placeholder="کد عضو / کارمند / مربی" onkeypress="if(event.key==='Enter') quickCheckin()">
-                            <button class="btn-gold" onclick="quickCheckin()"><i class="fas fa-sign-in-alt"></i></button>
-                            <button class="btn-gold" onclick="quickCheckout()"><i class="fas fa-sign-out-alt"></i></button>
-                        </div>
-                    </div>
-                    <div class="col-md-8 text-md-end"><span class="badge-gold me-2" id="attendanceStats">امروز: 0 | این هفته: 0 | این ماه: 0</span></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table-gold">
-                        <thead><tr><th>نوع</th><th>نام</th><th>کد</th><th>ورود</th><th>خروج</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-                        <tbody id="attendanceBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ==================== COACHES ==================== -->
-            <div id="page-coaches" class="page-section">
-                <h2 class="page-title"><i class="fas fa-chalkboard-teacher me-2"></i>مربیان و کارکنان</h2>
-                <ul class="nav nav-tabs-gold mb-3">
-                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabTrainers">مربیان</a></li>
-                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabStaff">کارکنان</a></li>
-                </ul>
-                <div class="tab-content">
-                    <div class="tab-pane fade show active" id="tabTrainers">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <input type="text" class="form-control-gold" id="trainerSearch" placeholder="جستجوی مربی..." oninput="filterTrainers()" style="width:250px;display:inline-block;">
-                                <span class="badge-gold me-2" id="trainerStats">کل: 0 | فعال: 0</span>
-                            </div>
-                            <button class="btn-gold" onclick="openTrainerModal()"><i class="fas fa-plus me-2"></i>مربی جدید</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table-gold">
-                                <thead><tr><th>کد</th><th>نام</th><th>تخصص</th><th>شماره</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-                                <tbody id="trainersBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="tabStaff">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <input type="text" class="form-control-gold" id="staffSearch" placeholder="جستجوی کارمند..." oninput="filterStaff()" style="width:250px;display:inline-block;">
-                                <span class="badge-gold me-2" id="staffStats">کل: 0 | فعال: 0</span>
-                            </div>
-                            <button class="btn-gold" onclick="openStaffModal()"><i class="fas fa-plus me-2"></i>کارمند جدید</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table-gold">
-                                <thead><tr><th>کد</th><th>نام</th><th>سمت</th><th>شماره</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-                                <tbody id="staffBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== EQUIPMENT ==================== -->
-            <div id="page-equipment" class="page-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="page-title mb-0"><i class="fas fa-dumbbell me-2"></i>مدیریت تجهیزات</h2>
-                    <button class="btn-gold" onclick="openEquipmentModal()"><i class="fas fa-plus me-2"></i>تجهیزات جدید</button>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4"><input type="text" class="form-control-gold" id="equipmentSearch" placeholder="جستجو..." oninput="filterEquipment()"></div>
-                    <div class="col-md-8 text-md-end"><span class="badge-gold me-2" id="equipmentStats">کل: 0 | فعال: 0 | خراب: 0 | غیرفعال: 0</span></div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table-gold">
-                        <thead><tr><th>نام</th><th>دسته</th><th>تعداد</th><th>وضعیت</th><th>محل</th><th>عملیات</th></tr></thead>
-                        <tbody id="equipmentBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ==================== CARDS ==================== -->
-            <div id="page-cards" class="page-section">
-                <h2 class="page-title"><i class="fas fa-id-card me-2"></i>کارت‌ها و اسکنر</h2>
-                <ul class="nav nav-tabs-gold mb-3">
-                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabCardMaker">ساخت کارت</a></li>
-                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabScanner">اسکنر</a></li>
-                </ul>
-                <div class="tab-content">
-                    <div class="tab-pane fade show active" id="tabCardMaker">
-                        <div class="row g-3">
-                            <div class="col-md-5">
-                                <div class="form-gold">
-                                    <div class="mb-3"><label class="form-label">نوع شخص</label>
-                                        <select class="form-control-gold" id="cardPersonType" onchange="updateCardPersonList()">
-                                            <option value="member">عضو</option>
-                                            <option value="trainer">مربی</option>
-                                            <option value="staff">کارمند</option>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3"><label class="form-label">انتخاب شخص</label>
-                                        <select class="form-control-gold" id="cardPersonSelect" onchange="generateCardPreview()"></select>
-                                    </div>
-                                    <div class="d-grid gap-2">
-                                        <button class="btn-gold" onclick="saveCardAsImage()"><i class="fas fa-download me-2"></i>ذخیره کارت</button>
-                                        <button class="btn-gold" style="background:#2A3348;color:white;" onclick="window.print()"><i class="fas fa-print me-2"></i>چاپ</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-7">
-                                <div id="cardPreview" class="card-preview-container" style="min-height:300px;display:flex;align-items:center;justify-content:center;">
-                                    <p class="text-muted">کارت در اینجا نمایش داده می‌شود...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="tabScanner">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="stat-card">
-                                    <h6 class="text-gold mb-3"><i class="fas fa-keyboard"></i> ورود با کد ID</h6>
-                                    <div class="form-gold">
-                                        <div class="mb-3"><label class="form-label">کد ID را وارد کنید</label>
-                                            <input type="text" class="form-control-gold" id="codeVerifyInput" placeholder="مثال: MBR001" onkeypress="if(event.key==='Enter') verifyByCode()">
-                                        </div>
-                                        <button class="btn-gold w-100" onclick="verifyByCode()"><i class="fas fa-search me-2"></i>بررسی</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="stat-card">
-                                    <h6 class="text-gold mb-3"><i class="fas fa-qrcode"></i> Paste QR Data</h6>
-                                    <div class="form-gold">
-                                        <div class="mb-3"><label class="form-label">داده‌های QR را بچسبانید</label>
-                                            <textarea class="form-control-gold" id="qrScanData" rows="3" placeholder="داده‌های QR را اینجا بچسبانید..."></textarea>
-                                        </div>
-                                        <button class="btn-gold w-100" onclick="verifyQR()"><i class="fas fa-search me-2"></i>تأیید QR</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="stat-card">
-                                    <h6 class="text-gold mb-3"><i class="fas fa-image"></i> آپلود تصویر کارت</h6>
-                                    <div class="form-gold">
-                                        <div class="mb-3"><label class="form-label">تصویر کارت را آپلود کنید</label>
-                                            <input type="file" class="form-control-gold" id="cardImageUpload" accept="image/*" onchange="uploadCardImage()">
-                                        </div>
-                                        <div id="imagePreview" style="display:none;text-align:center;margin-bottom:8px;"></div>
-                                        <button class="btn-gold w-100" onclick="clearImagePreview()"><i class="fas fa-undo me-2"></i>پاک کردن</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="stat-card">
-                                    <h6 class="text-gold mb-3"><i class="fas fa-clipboard-check"></i> نتیجه تأیید</h6>
-                                    <div id="qrResult"><p class="text-muted text-center">نتیجه تأیید در اینجا نمایش داده می‌شود...</p></div>
-                                    <div class="mt-2 text-center"><button class="btn-gold-small" onclick="clearScanner()"><i class="fas fa-undo me-1"></i>پاک کردن همه</button></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== REPORTS ==================== -->
-            <div id="page-reports" class="page-section">
-                <h2 class="page-title"><i class="fas fa-file-alt me-2"></i>گزارشات</h2>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="form-gold">
-                            <label class="form-label">نوع گزارش</label>
-                            <select class="form-control-gold" id="reportType" onchange="generateReport()">
-                                <option value="members">اعضا</option>
-                                <option value="trainers">مربیان</option>
-                                <option value="staff">کارکنان</option>
-                                <option value="payments">پرداخت‌ها</option>
-                                <option value="attendance">حضور و غیاب</option>
-                                <option value="equipment">تجهیزات</option>
-                                <option value="expiring">اعضای در حال انقضا</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4"><button class="btn-gold w-100" onclick="exportReportCSV()"><i class="fas fa-file-csv me-2"></i>خروجی CSV</button></div>
-                    <div class="col-md-4"><button class="btn-gold w-100" style="background:#2A3348;color:white;" onclick="generateReport()"><i class="fas fa-sync me-2"></i>تولید مجدد</button></div>
-                </div>
-                <div class="mt-3 table-responsive">
-                    <table class="table-gold" id="reportTable">
-                        <thead id="reportHead"></thead>
-                        <tbody id="reportBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- ==================== NOTIFICATIONS ==================== -->
-            <div id="page-notifications" class="page-section">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="page-title mb-0"><i class="fas fa-bell me-2"></i>اعلانات</h2>
-                    <div>
-                        <button class="btn-gold me-2" onclick="markAllRead()"><i class="fas fa-check-double me-2"></i>همه خوانده شد</button>
-                        <button class="btn-gold" style="background:#2A3348;color:white;" onclick="clearNotifications()"><i class="fas fa-trash me-2"></i>پاک کردن</button>
-                    </div>
-                </div>
-                <div id="notificationsList"></div>
-            </div>
-
-            <!-- ==================== SETTINGS ==================== -->
-            <div id="page-settings" class="page-section">
-                <h2 class="page-title"><i class="fas fa-cog me-2"></i>تنظیمات</h2>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="stat-card">
-                            <h6 class="text-gold mb-3">اطلاعات باشگاه</h6>
-                            <div class="form-gold">
-                                <div class="mb-3"><label class="form-label">نام باشگاه</label><input type="text" class="form-control-gold" id="settingsGymName" value="جیم گلدن"></div>
-                                <div class="mb-3"><label class="form-label">آدرس</label><input type="text" class="form-control-gold" id="settingsAddress" value="کابل، افغانستان"></div>
-                                <div class="mb-3"><label class="form-label">شماره تماس</label><input type="text" class="form-control-gold" id="settingsPhone" value="+93 700 000 000"></div>
-                                <div class="mb-3"><label class="form-label">ایمیل</label><input type="email" class="form-control-gold" id="settingsEmail" value="info@goldengym.af"></div>
-                                <div class="mb-3"><label class="form-label">واحد پول</label><input type="text" class="form-control-gold" id="settingsCurrency" value="AFN"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="stat-card">
-                            <h6 class="text-gold mb-3">امنیت و ظاهر</h6>
-                            <div class="form-gold">
-                                <div class="mb-3"><label class="form-label">رمز عبور فعلی</label><input type="password" class="form-control-gold" id="currentPassword" placeholder="رمز فعلی"></div>
-                                <div class="mb-3"><label class="form-label">رمز عبور جدید</label><input type="password" class="form-control-gold" id="newPassword" placeholder="رمز جدید"></div>
-                                <div class="mb-3"><label class="form-label">تکرار رمز جدید</label><input type="password" class="form-control-gold" id="confirmPassword" placeholder="تکرار رمز جدید"></div>
-                                <button class="btn-gold w-100" onclick="changePassword()"><i class="fas fa-key me-2"></i>تغییر رمز عبور</button>
-                            </div>
-                            <hr class="border-gold">
-                            <div class="form-gold">
-                                <div class="mb-3">
-                                    <label class="form-label">آپلود لوگو</label>
-                                    <input type="file" class="form-control-gold" accept="image/png" id="logoUpload" onchange="uploadLogo()">
-                                    <div id="logoPreviewWrap" style="display:none;margin-top:8px;"><img id="logoPreview" style="max-width:100px;max-height:100px;border-radius:8px;border:1px solid #2A3348;background:#fff;padding:4px;"></div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">آپلود امضا</label>
-                                    <input type="file" class="form-control-gold" accept="image/png" id="signatureUpload" onchange="uploadSignature()">
-                                    <div id="signaturePreviewWrap" style="display:none;margin-top:8px;"><img id="signaturePreview" style="max-width:140px;max-height:70px;border-radius:8px;border:1px solid #2A3348;background:#fff;padding:4px;"></div>
-                                </div>
-                                <button class="btn-gold w-100" onclick="saveSettings()"><i class="fas fa-save me-2"></i>ذخیره تنظیمات</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ==================== ABOUT ==================== -->
-            <div id="page-about" class="page-section">
-                <h2 class="page-title"><i class="fas fa-info-circle me-2"></i>درباره</h2>
-                <div class="stat-card text-center" style="max-width:600px;margin:0 auto;">
-                    <i class="fas fa-dumbbell" style="font-size:64px;color:#FFB900;"></i>
-                    <h3 class="text-gold mt-3">جیم گلدن</h3>
-                    <p class="text-muted">سیستم مدیریت حرفه‌ای باشگاه</p>
-                    <hr>
-                    <p><strong>نسخه:</strong> 4.0</p>
-                    <p><strong>تکنولوژی‌ها:</strong> Python 3.x, pywebview, SQLite3, Bootstrap 5, Chart.js</p>
-                    <p><strong>ویژگی‌ها:</strong></p>
-                    <ul class="list-unstyled text-muted">
-                        <li>✓ مدیریت اعضا</li>
-                        <li>✓ مدیریت پرداخت‌ها</li>
-                        <li>✓ حضور و غیاب</li>
-                        <li>✓ مربیان و کارکنان</li>
-                        <li>✓ تجهیزات</li>
-                        <li>✓ کارت و اسکنر</li>
-                        <li>✓ گزارشات</li>
-                        <li>✓ اعلانات</li>
-                    </ul>
-                    <p class="text-muted small mt-3">© 2025 جیم گلدن - تمامی حقوق محفوظ است</p>
-                </div>
-            </div>
-
+            <div id="pageLoading" class="text-muted text-center py-5">در حال آماده‌سازی محیط کار…</div>
         </div><!-- /main-content -->
     </div><!-- /app-container -->
 
@@ -994,6 +345,23 @@
     </div>
 
     <!-- ─── TOAST CONTAINER ─── -->
+    <!-- Delete confirmation -->
+    <div class="modal fade delete-confirm-modal" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <span class="delete-confirm-modal__icon"><i class="fas fa-trash-alt"></i></span>
+                    <h5 id="deleteConfirmTitle">حذف مورد</h5>
+                    <p id="deleteConfirmMessage">این عمل قابل بازگشت نیست.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="delete-confirm-modal__cancel" type="button" data-bs-dismiss="modal">انصراف</button>
+                    <button class="delete-confirm-modal__confirm" type="button" id="deleteConfirmAction"><i class="fas fa-trash-alt"></i> حذف</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-container"></div>
 
     <!-- ─── SCRIPTS ─── -->

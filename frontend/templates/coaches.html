@@ -1,0 +1,44 @@
+<!-- ==================== COACHES ==================== -->
+<div id="page-coaches" class="page-section team-page">
+    <header class="team-page__header">
+        <div>
+            <div class="team-page__kicker">TEAM MANAGEMENT</div>
+            <h1 class="team-page__title"><i class="fas fa-people-group"></i>مربیان و کارکنان</h1>
+            <p class="team-page__subtitle">تیم حرفه‌ای باشگاه، تخصص‌ها و وضعیت همکاری هر فرد را در یک نمای واحد مدیریت کنید.</p>
+        </div>
+        <div class="team-page__actions">
+            <button class="team-page__add is-secondary" type="button" onclick="openStaffModal()"><i class="fas fa-user-plus"></i>کارمند جدید</button>
+            <button class="team-page__add" type="button" onclick="openTrainerModal()"><i class="fas fa-dumbbell"></i>مربی جدید</button>
+        </div>
+    </header>
+
+    <section class="team-overview" aria-label="آمار تیم">
+        <article class="team-metric"><span class="team-metric__icon coaches"><i class="fas fa-dumbbell"></i></span><div><strong id="teamTrainerTotal">0</strong><span>کل مربیان</span></div></article>
+        <article class="team-metric"><span class="team-metric__icon available"><i class="fas fa-circle-check"></i></span><div><strong id="teamTrainerActive">0</strong><span>مربی فعال</span></div></article>
+        <article class="team-metric"><span class="team-metric__icon staff"><i class="fas fa-briefcase"></i></span><div><strong id="teamStaffTotal">0</strong><span>کل کارکنان</span></div></article>
+        <article class="team-metric"><span class="team-metric__icon available"><i class="fas fa-user-check"></i></span><div><strong id="teamStaffActive">0</strong><span>کارمند فعال</span></div></article>
+    </section>
+
+    <section class="team-directory">
+        <ul class="nav team-tabs" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabTrainers" type="button" role="tab"><i class="fas fa-dumbbell"></i>مربیان <span id="trainerTabCount">0</span></button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabStaff" type="button" role="tab"><i class="fas fa-briefcase"></i>کارکنان <span id="staffTabCount">0</span></button></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabTrainers" role="tabpanel">
+                <div class="team-directory__toolbar">
+                    <div><h2>فهرست مربیان</h2><p>تخصص‌ها و وضعیت همکاری مربیان باشگاه</p></div>
+                    <div class="team-filters"><label class="team-search" for="trainerSearch"><i class="fas fa-magnifying-glass"></i><input type="search" class="form-control-gold" id="trainerSearch" placeholder="جستجو در مربیان..." oninput="filterTrainers()"></label><button class="team-clear-filter" type="button" onclick="clearTeamFilter('trainerSearch', 'trainers')"><i class="fas fa-filter-circle-xmark"></i></button></div>
+                </div>
+                <div class="table-responsive team-table-wrap"><table class="table-gold team-table"><thead><tr><th>مربی</th><th>کد پرسنلی</th><th>تخصص</th><th>تماس</th><th>وضعیت</th><th class="text-center">عملیات</th></tr></thead><tbody id="trainersBody"></tbody></table></div>
+            </div>
+            <div class="tab-pane fade" id="tabStaff" role="tabpanel">
+                <div class="team-directory__toolbar">
+                    <div><h2>فهرست کارکنان</h2><p>اطلاعات پرسنل اجرایی و وضعیت همکاری</p></div>
+                    <div class="team-filters"><label class="team-search" for="staffSearch"><i class="fas fa-magnifying-glass"></i><input type="search" class="form-control-gold" id="staffSearch" placeholder="جستجو در کارکنان..." oninput="filterStaff()"></label><button class="team-clear-filter" type="button" onclick="clearTeamFilter('staffSearch', 'staff')"><i class="fas fa-filter-circle-xmark"></i></button></div>
+                </div>
+                <div class="table-responsive team-table-wrap"><table class="table-gold team-table"><thead><tr><th>کارمند</th><th>کد پرسنلی</th><th>سمت</th><th>تماس</th><th>وضعیت</th><th class="text-center">عملیات</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+            </div>
+        </div>
+    </section>
+</div>

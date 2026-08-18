@@ -1,0 +1,59 @@
+            <!-- ==================== DASHBOARD ==================== -->
+            <div id="page-dashboard" class="page-section active">
+                <div class="dashboard-shell">
+                    <section class="dashboard-hero mb-4">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 position-relative" style="z-index:1;">
+                            <div>
+                                <div class="dashboard-kicker">GOLDEN GYM سیستم مدریت</div>
+                                <h1 class="dashboard-heading">نمای کلی باشگاه</h1>
+                                <p class="dashboard-subtitle">عملکرد اعضا، درآمد و کارهای مهم را در یک نگاه مدیریت کنید.</p>
+                            </div>
+                            <div class="text-start">
+                                <div class="dashboard-date mb-2"><i class="far fa-calendar-alt"></i><span id="dashboardDate"></span></div>
+                                <button class="dashboard-refresh" type="button" onclick="updateDashboard()"><i class="fas fa-rotate"></i>به‌روزرسانی داده‌ها</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="row g-3 dashboard-metrics" id="dashboardStats">
+                        <div class="col-xl-2 col-lg-4 col-md-4 col-6"><article class="dashboard-stat"><div class="dashboard-stat__top"><span class="dashboard-stat__icon members"><i class="fas fa-users"></i></span><span class="dashboard-stat__tag">MEMBERS</span></div><div class="dashboard-stat__value" id="statTotalMembers">0</div><div class="dashboard-stat__label">کل اعضا</div></article></div>
+                        <div class="col-xl-2 col-lg-4 col-md-4 col-6"><article class="dashboard-stat"><div class="dashboard-stat__top"><span class="dashboard-stat__icon active"><i class="fas fa-user-check"></i></span><span class="dashboard-stat__tag">ACTIVE</span></div><div class="dashboard-stat__value" id="statActiveMembers">0</div><div class="dashboard-stat__label">عضویت‌های فعال</div></article></div>
+                        <div class="col-xl-2 col-lg-4 col-md-4 col-6"><article class="dashboard-stat"><div class="dashboard-stat__top"><span class="dashboard-stat__icon expired"><i class="fas fa-user-clock"></i></span><span class="dashboard-stat__tag">RENEWAL</span></div><div class="dashboard-stat__value" id="statExpiredMembers">0</div><div class="dashboard-stat__label">عضویت‌های منقضی</div></article></div>
+                        <div class="col-xl-2 col-lg-4 col-md-4 col-6"><article class="dashboard-stat"><div class="dashboard-stat__top"><span class="dashboard-stat__icon trainers"><i class="fas fa-dumbbell"></i></span><span class="dashboard-stat__tag">COACHES</span></div><div class="dashboard-stat__value" id="statTotalTrainers">0</div><div class="dashboard-stat__label">مربیان فعال</div></article></div>
+                        <div class="col-xl-2 col-lg-4 col-md-4 col-6"><article class="dashboard-stat"><div class="dashboard-stat__top"><span class="dashboard-stat__icon staff"><i class="fas fa-user-tie"></i></span><span class="dashboard-stat__tag">TEAM</span></div><div class="dashboard-stat__value" id="statTotalStaff">0</div><div class="dashboard-stat__label">کارکنان فعال</div></article></div>
+                        <div class="col-xl-2 col-lg-4 col-md-4 col-6"><article class="dashboard-stat"><div class="dashboard-stat__top"><span class="dashboard-stat__icon income"><i class="fas fa-wallet"></i></span><span class="dashboard-stat__tag">REVENUE</span></div><div class="dashboard-stat__value" id="statTotalIncome">0</div><div class="dashboard-stat__label">درآمد سالانه (AFN)</div></article></div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-lg-8">
+                            <section class="dashboard-panel">
+                                <div class="d-flex justify-content-between align-items-start"><div><h2 class="dashboard-panel__title"><i class="fas fa-chart-column"></i>روند درآمد</h2><p class="dashboard-panel__eyebrow">مقایسه درآمد ماه‌های اخیر</p></div><span class="badge-gold">AFN</span></div>
+                                <div class="dashboard-chart"><canvas id="incomeChart"></canvas></div>
+                            </section>
+                        </div>
+                        <div class="col-lg-4">
+                            <section class="dashboard-panel">
+                                <h2 class="dashboard-panel__title"><i class="fas fa-bolt"></i>دسترسی سریع</h2>
+                                <p class="dashboard-panel__eyebrow">کارهای روزانه را بدون جابه‌جایی بین صفحات انجام دهید.</p>
+                                <div class="dashboard-actions">
+                                    <button class="dashboard-action dashboard-action--primary" type="button" onclick="navigate('members')"><i class="fas fa-user-plus"></i>افزودن عضو</button>
+                                    <button class="dashboard-action" type="button" onclick="navigate('payments')"><i class="fas fa-hand-holding-dollar"></i>ثبت پرداخت</button>
+                                    <button class="dashboard-action" type="button" onclick="navigate('attendance')"><i class="fas fa-clipboard-check"></i>ثبت حضور</button>
+                                    <button class="dashboard-action" type="button" onclick="navigate('cards')"><i class="fas fa-qrcode"></i>اسکن کارت</button>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <section class="dashboard-panel mt-3">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2"><div><h2 class="dashboard-panel__title"><i class="fas fa-hourglass-half"></i>نیازمند پیگیری</h2><p class="dashboard-panel__eyebrow">عضویت‌هایی که طی ۷ روز آینده منقضی می‌شوند.</p></div><button class="btn-outline-gold-small" type="button" onclick="navigate('members')">مشاهده اعضا <i class="fas fa-arrow-left me-1"></i></button></div>
+                        <div class="table-responsive dashboard-table-wrap">
+                            <table class="table-gold dashboard-table">
+                                <thead><tr><th>کد عضو</th><th>نام و نام خانوادگی</th><th>تاریخ انقضا</th><th>وضعیت</th></tr></thead>
+                                <tbody id="expiringMembersBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+

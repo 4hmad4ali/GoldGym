@@ -10,37 +10,69 @@ function renderMembers() {
     var bridge = getBridge();
     bridge.get_members(search, statusFilter === 'all' ? 'All' : statusFilter).then(function(members) {
         var body = document.getElementById('membersBody');
+        var resultCount = document.getElementById('membersResultCount');
+        if (!body) return;
+        if (resultCount) resultCount.textContent = members.length;
         
         bridge.get_member_stats().then(function(stats) {
-            document.getElementById('memberStats').textContent =
-                'کل: ' + stats.total + ' | فعال: ' + stats.active + ' | منقضی: ' + stats.expired + ' | مرد: ' + stats.male + ' | زن: ' + stats.female;
+            setMemberMetric('memberStatTotal', stats.total);
+            setMemberMetric('memberStatActive', stats.active);
+            setMemberMetric('memberStatExpired', stats.expired);
+            setMemberMetric('memberStatMale', stats.male);
+            setMemberMetric('memberStatFemale', stats.female);
         });
         
         if (members.length === 0) {
-            body.innerHTML = '<tr><td colspan="8" class="text-muted text-center">هیچ عضوی یافت نشد</td></tr>';
+            body.innerHTML = '<tr><td colspan="7"><div class="member-empty"><span><i class="fas fa-users-slash"></i></span><strong>عضوی پیدا نشد</strong><p>جستجو یا فیلترها را تغییر دهید، یا یک عضو جدید اضافه کنید.</p><button class="btn-gold-small" type="button" onclick="openMemberModal()"><i class="fas fa-user-plus me-1"></i>افزودن عضو</button></div></td></tr>';
             return;
         }
         
         body.innerHTML = members.map(function(m) {
-            var statusClass = m.status === 'Active' ? 'success' : m.status === 'Expired' ? 'danger' : 'secondary';
+            var statusClass = m.status === 'Active' ? 'active' : m.status === 'Expired' ? 'expired' : 'inactive';
             var statusLabel = m.status === 'Active' ? 'فعال' : m.status === 'Expired' ? 'منقضی' : 'غیرفعال';
+            var memberName = escapeMemberText(m.full_name || '-');
+            var fatherName = escapeMemberText(m.father_name || '');
+            var memberCode = escapeMemberText(m.member_code || '-');
+            var phone = escapeMemberText(m.phone || '-');
+            var membershipType = escapeMemberText(m.membership_type || '-');
+            var initials = getMemberInitials(m.full_name || 'عضو');
             return '<tr>' +
-                '<td><span class="text-gold">' + m.member_code + '</span></td>' +
-                '<td>' + m.full_name + '</td>' +
-                '<td>' + (m.father_name || '-') + '</td>' +
-                '<td>' + (m.phone || '-') + '</td>' +
-                '<td>' + (m.membership_type || '-') + '</td>' +
-                '<td>' + (m.expiry_date || '-') + '</td>' +
-                '<td><span class="badge bg-' + statusClass + '">' + statusLabel + '</span></td>' +
-                '<td><button class="btn btn-sm btn-gold me-1" onclick="editMember(' + m.id + ')"><i class="fas fa-edit"></i></button>' +
-                '<button class="btn btn-sm btn-outline-gold me-1" onclick="deleteMember(' + m.id + ')"><i class="fas fa-trash"></i></button>' +
-                '<button class="btn btn-sm btn-outline-gold" onclick="viewMemberCard(\'' + m.member_code + '\')"><i class="fas fa-qrcode"></i></button></td>' +
+                '<td><div class="member-identity"><span class="member-avatar">' + initials + '</span><div><strong>' + memberName + '</strong><small>' + (fatherName ? 'فرزند ' + fatherName : '—') + '</small></div></div></td>' +
+                '<td><span class="member-code">' + memberCode + '</span></td>' +
+                '<td><span class="member-phone"><i class="fas fa-phone"></i>' + phone + '</span></td>' +
+                '<td><span class="member-plan">' + membershipType + '</span></td>' +
+                '<td><span class="member-expiry"><i class="far fa-calendar"></i>' + escapeMemberText(m.expiry_date || '-') + '</span></td>' +
+                '<td><span class="member-status member-status--' + statusClass + '"><i class="fas fa-circle"></i>' + statusLabel + '</span></td>' +
+                '<td><div class="member-row-actions"><button class="member-row-action is-primary" type="button" title="ویرایش عضو" onclick="editMember(' + m.id + ')"><i class="fas fa-pen"></i></button>' +
+                '<button class="member-row-action" type="button" title="نمایش کارت" onclick="viewMemberCard(\'' + String(m.member_code || '').replace(/'/g, "\\'") + '\')"><i class="fas fa-qrcode"></i></button>' +
+                '<button class="member-row-action is-danger" type="button" title="حذف عضو" onclick="deleteMember(' + m.id + ')"><i class="fas fa-trash"></i></button></div></td>' +
             '</tr>';
         }).join('');
     })['catch'](function(e) { console.error(e); });
 }
 
 function filterMembers() { renderMembers(); }
+
+function clearMemberFilters() {
+    var search = document.getElementById('memberSearch');
+    var status = document.getElementById('memberStatusFilter');
+    if (search) search.value = '';
+    if (status) status.value = 'all';
+    renderMembers();
+}
+
+function setMemberMetric(id, value) {
+    var element = document.getElementById(id);
+    if (element) element.textContent = value || 0;
+}
+
+function escapeMemberText(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function getMemberInitials(name) {
+    return escapeMemberText(String(name).trim().split(/\s+/).slice(0, 2).map(function(part) { return part.charAt(0); }).join('') || 'ع');
+}
 
 function openMemberModal(data) {
     data = data || null;
@@ -80,9 +112,9 @@ function editMember(id) {
 }
 
 function saveMember() {
-    var id = document.getElementById('memberEditId').value;
-    var name = document.getElementById('mName').value.trim();
-    var father = document.getElementById('mFather').value.trim();
+    var id = getMemberFormControl('memberEditId').value;
+    var name = getMemberFormControl('mName').value.trim();
+    var father = getMemberFormControl('mFather').value.trim();
     
     if (!name || !father) {
         showToast('خطا', 'نام و نام پدر الزامی است', 'error');
@@ -92,17 +124,17 @@ function saveMember() {
     var data = {
         full_name: name,
         father_name: father,
-        phone: document.getElementById('mPhone').value,
-        email: document.getElementById('mEmail').value,
-        gender: document.getElementById('mGender').value,
-        blood_group: document.getElementById('mBlood').value,
-        date_of_birth: document.getElementById('mDob').value,
-        membership_type: document.getElementById('mPlan').value,
-        expiry_date: document.getElementById('mExpiry').value,
-        status: document.getElementById('mStatus').value,
-        emergency_contact: document.getElementById('mEmergency').value,
-        address: document.getElementById('mAddress').value,
-        notes: document.getElementById('mNotes').value
+        phone: getMemberFormControl('mPhone').value,
+        email: getMemberFormControl('mEmail').value,
+        gender: getMemberFormControl('mGender').value,
+        blood_group: getMemberFormControl('mBlood').value,
+        date_of_birth: getMemberFormControl('mDob').value,
+        membership_type: getMemberFormControl('mPlan').value,
+        expiry_date: getMemberFormControl('mExpiry').value,
+        status: getMemberFormControl('mStatus').value,
+        emergency_contact: getMemberFormControl('mEmergency').value,
+        address: getMemberFormControl('mAddress').value,
+        notes: getMemberFormControl('mNotes').value
     };
     
     var bridge = getBridge();
@@ -119,9 +151,10 @@ function saveMember() {
     
     promise.then(function(result) {
         if (result.success) {
-            bootstrap.Modal.getInstance(document.getElementById('memberModal')).hide();
-            renderMembers();
-            updateDashboard();
+            navigate('members').then(function() {
+                renderMembers();
+                updateDashboard();
+            });
             showToast('موفق', id ? 'عضو ویرایش شد' : 'عضو جدید اضافه شد');
         } else {
             showToast('خطا', result.message || 'خطا در ذخیره', 'error');
@@ -147,13 +180,71 @@ function deleteMember(id) {
 }
 
 function viewMemberCard(code) {
-    navigate('cards');
-    document.getElementById('cardPersonType').value = 'member';
-    if (typeof updateCardPersonList === 'function') {
-        setTimeout(function() {
+    navigate('cards').then(function() {
+        document.getElementById('cardPersonType').value = 'member';
+        if (typeof updateCardPersonList === 'function') {
             updateCardPersonList();
             document.getElementById('cardPersonSelect').value = code;
             if (typeof generateCardPreview === 'function') generateCardPreview();
-        }, 200);
-    }
+        }
+    });
+}
+
+// The member form now has its own workspace instead of opening in a modal.
+// Keeping this name preserves existing buttons and sidebar shortcuts.
+function openMemberModal(data) {
+    data = data || null;
+    navigate('member-form').then(function() {
+        var form = document.getElementById('memberPageForm');
+        if (!form) return;
+
+        form.reset();
+        getMemberFormControl('memberEditId').value = '';
+        document.getElementById('memberFormTitle').textContent = data ? 'ویرایش عضو' : 'افزودن عضو جدید';
+        document.getElementById('memberFormKicker').textContent = data ? 'MEMBER PROFILE' : 'NEW MEMBER PROFILE';
+        document.getElementById('memberFormSubtitle').textContent = data ? 'اطلاعات عضو را بررسی و تغییرات مورد نیاز را ذخیره کنید.' : 'مشخصات و اطلاعات عضویت را ثبت کنید تا عضو جدید به سیستم اضافه شود.';
+
+        if (data) {
+            getMemberFormControl('memberEditId').value = data.id;
+            getMemberFormControl('mName').value = data.full_name || '';
+            getMemberFormControl('mFather').value = data.father_name || '';
+            getMemberFormControl('mPhone').value = data.phone || '';
+            getMemberFormControl('mEmail').value = data.email || '';
+            getMemberFormControl('mGender').value = data.gender || 'Male';
+            getMemberFormControl('mBlood').value = data.blood_group || 'A+';
+            getMemberFormControl('mDob').value = data.date_of_birth || '';
+            getMemberFormControl('mPlan').value = data.membership_type || 'ماهانه';
+            getMemberFormControl('mExpiry').value = data.expiry_date || '';
+            getMemberFormControl('mStatus').value = data.status || 'Active';
+            getMemberFormControl('mEmergency').value = data.emergency_contact || '';
+            getMemberFormControl('mAddress').value = data.address || '';
+            getMemberFormControl('mNotes').value = data.notes || '';
+        } else {
+            getMemberFormControl('mExpiry').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        }
+    });
+}
+
+function getMemberFormControl(id) {
+    return document.querySelector('#page-member-form [id="' + id + '"]');
+}
+
+function deleteMember(id) {
+    showDeleteConfirmation({
+        title: 'حذف عضو',
+        message: 'این عضو و اطلاعات وابسته به او حذف می‌شود. این عمل قابل بازگشت نیست.',
+        onConfirm: function() {
+            getBridge().delete_member(id).then(function(result) {
+                if (result.success) {
+                    renderMembers();
+                    updateDashboard();
+                    showToast('حذف شد', 'عضو با موفقیت حذف شد');
+                } else {
+                    showToast('خطا', result.message || 'خطا در حذف عضو', 'error');
+                }
+            })['catch'](function(error) {
+                showToast('خطا', 'خطا در حذف عضو: ' + error.message, 'error');
+            });
+        }
+    });
 }

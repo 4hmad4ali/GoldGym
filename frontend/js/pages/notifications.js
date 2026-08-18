@@ -7,24 +7,41 @@ function renderNotifications() {
     var bridge = getBridge();
     bridge.get_notifications(false).then(function(notifications) {
         var container = document.getElementById('notificationsList');
+        if (!container) return;
+        var unreadCount = notifications.filter(function(notification) { return !notification.is_read; }).length;
+        setNotificationMetric('notificationsTotal', notifications.length);
+        setNotificationMetric('notificationsUnread', unreadCount);
+        setNotificationMetric('notificationsRead', notifications.length - unreadCount);
+        setNotificationMetric('notificationsFeedCount', notifications.length);
         
         if (notifications.length === 0) {
-            container.innerHTML = '<p class="text-muted text-center">هیچ اعلانی وجود ندارد</p>';
+            container.innerHTML = '<div class="notifications-empty"><span><i class="fas fa-bell-slash"></i></span><strong>اعلان جدیدی ندارید</strong><p>وقتی رویداد مهمی در سیستم ثبت شود، در این بخش نمایش داده می‌شود.</p></div>';
             return;
         }
         
         container.innerHTML = notifications.map(function(n) {
-            return '<div class="stat-card mb-2 ' + (n.is_read ? 'opacity-75' : '') + '" style="border-right: 4px solid ' + (n.is_read ? '#555' : 'var(--gold)') + ';">' +
-                '<div class="d-flex justify-content-between">' +
-                    '<div><strong>' + n.title + '</strong><p class="mb-0 text-muted small">' + n.message + '</p><small class="text-muted">' + n.created_at + '</small></div>' +
-                    '<div>' +
-                        (!n.is_read ? '<button class="btn btn-sm btn-gold me-1" onclick="markNotificationRead(' + n.id + ')"><i class="fas fa-check"></i></button>' : '') +
-                        '<button class="btn btn-sm btn-outline-gold" onclick="deleteNotification(' + n.id + ')"><i class="fas fa-trash"></i></button>' +
-                    '</div>' +
+            var title = escapeNotificationText(n.title || 'اعلان سیستم');
+            var message = escapeNotificationText(n.message || '');
+            var createdAt = escapeNotificationText(n.created_at || '');
+            return '<article class="notification-item ' + (n.is_read ? 'is-read' : 'is-unread') + '">' +
+                '<span class="notification-item__icon"><i class="fas ' + (n.is_read ? 'fa-bell' : 'fa-bell-ring') + '"></i></span>' +
+                '<div class="notification-item__content"><div class="notification-item__top"><strong>' + title + '</strong>' + (!n.is_read ? '<span class="notification-item__new">جدید</span>' : '') + '</div><p>' + message + '</p><time><i class="far fa-clock"></i>' + createdAt + '</time></div>' +
+                '<div class="notification-item__actions">' +
+                    (!n.is_read ? '<button class="notification-row-action is-primary" type="button" title="خوانده شد" onclick="markNotificationRead(' + n.id + ')"><i class="fas fa-check"></i></button>' : '') +
+                    '<button class="notification-row-action is-danger" type="button" title="حذف اعلان" onclick="deleteNotification(' + n.id + ')"><i class="fas fa-trash"></i></button>' +
                 '</div>' +
-            '</div>';
+            '</article>';
         }).join('');
     })['catch'](function(e) { console.error(e); });
+}
+
+function setNotificationMetric(id, value) {
+    var element = document.getElementById(id);
+    if (element) element.textContent = value || 0;
+}
+
+function escapeNotificationText(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 function markNotificationRead(id) {

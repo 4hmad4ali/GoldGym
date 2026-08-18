@@ -1,0 +1,33 @@
+<!-- ==================== STAFF FORM ==================== -->
+<div id="page-staff-form" class="page-section team-form-page">
+    <div class="team-form-page__header">
+        <div>
+            <button class="team-form-page__back" type="button" onclick="navigate('coaches')"><i class="fas fa-arrow-right"></i> بازگشت به تیم</button>
+            <span class="team-form-page__kicker" id="staffFormKicker">STAFF PROFILE</span>
+            <h1 class="team-form-page__title" id="staffFormTitle">افزودن کارمند جدید</h1>
+            <p class="team-form-page__subtitle" id="staffFormSubtitle">اطلاعات شغلی و وضعیت همکاری کارمند را ثبت کنید.</p>
+        </div>
+    </div>
+    <form id="staffPageForm" class="team-form" onsubmit="event.preventDefault(); saveStaff();">
+        <input type="hidden" id="staffEditId">
+        <section class="team-form-card">
+            <div class="team-form-card__heading"><span><i class="fas fa-user-tie"></i></span><div><h2>اطلاعات کارمند</h2><p>مشخصات اصلی و مسئولیت کارمند را وارد کنید.</p></div></div>
+            <div class="team-form-grid form-gold">
+                <div><label class="form-label" for="sName">نام کامل <em>*</em></label><input type="text" class="form-control-gold" id="sName" required></div>
+                <div><label class="form-label" for="sFather">نام پدر <em>*</em></label><input type="text" class="form-control-gold" id="sFather" required></div>
+                <div><label class="form-label" for="sPhone">شماره تماس</label><input type="text" class="form-control-gold" id="sPhone" dir="ltr"></div>
+                <div><label class="form-label" for="sPosition">سمت</label><input type="text" class="form-control-gold" id="sPosition" placeholder="مثلاً پذیرش"></div>
+            </div>
+        </section>
+        <section class="team-form-card">
+            <div class="team-form-card__heading"><span><i class="fas fa-briefcase"></i></span><div><h2>اطلاعات همکاری</h2><p>وضعیت استخدام و شرایط مالی کارمند را تکمیل کنید.</p></div></div>
+            <div class="team-form-grid form-gold">
+                <div><label class="form-label" for="sStatus">وضعیت</label><select class="form-control-gold" id="sStatus"><option value="Active">فعال</option><option value="Inactive">غیرفعال</option></select></div>
+                <div><label class="form-label" for="sSalary">حقوق (AFN)</label><input type="number" class="form-control-gold" id="sSalary" min="0" dir="ltr"></div>
+                <div><label class="form-label" for="sHireDate">تاریخ استخدام</label><input type="date" class="form-control-gold" id="sHireDate"></div>
+                <div class="team-form-grid__wide"><label class="form-label" for="sNotes">یادداشت</label><textarea class="form-control-gold" id="sNotes" rows="3" placeholder="توضیحات تکمیلی درباره کارمند..."></textarea></div>
+            </div>
+        </section>
+        <div class="team-form__actions team-form-page__actions"><button class="team-form-page__cancel" type="button" onclick="navigate('coaches')">انصراف</button><button class="btn-gold team-form-page__save" type="submit"><i class="fas fa-save"></i> ذخیره کارمند</button></div>
+    </form>
+</div>

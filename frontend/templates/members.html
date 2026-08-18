@@ -1,0 +1,44 @@
+<!-- ==================== MEMBERS ==================== -->
+<div id="page-members" class="page-section member-page">
+    <header class="member-page__header">
+        <div>
+            <div class="member-page__kicker">MEMBER DIRECTORY</div>
+            <h1 class="member-page__title"><i class="fas fa-users"></i>مدیریت اعضا</h1>
+            <p class="member-page__subtitle">عضویت‌ها، وضعیت تمدید و اطلاعات تماس اعضا را از یک محیط مدیریت کنید.</p>
+        </div>
+        <button class="member-page__add" type="button" onclick="openMemberModal()"><i class="fas fa-user-plus"></i>عضو جدید</button>
+    </header>
+
+    <section class="member-overview" aria-label="آمار اعضا">
+        <article class="member-metric"><span class="member-metric__icon total"><i class="fas fa-users"></i></span><div><strong id="memberStatTotal">0</strong><span>کل اعضا</span></div></article>
+        <article class="member-metric"><span class="member-metric__icon active"><i class="fas fa-circle-check"></i></span><div><strong id="memberStatActive">0</strong><span>عضویت فعال</span></div></article>
+        <article class="member-metric"><span class="member-metric__icon expired"><i class="fas fa-calendar-xmark"></i></span><div><strong id="memberStatExpired">0</strong><span>نیازمند تمدید</span></div></article>
+        <article class="member-metric"><span class="member-metric__icon male"><i class="fas fa-mars"></i></span><div><strong id="memberStatMale">0</strong><span>اعضای مرد</span></div></article>
+        <article class="member-metric"><span class="member-metric__icon female"><i class="fas fa-venus"></i></span><div><strong id="memberStatFemale">0</strong><span>اعضای زن</span></div></article>
+    </section>
+
+    <section class="member-directory">
+        <div class="member-directory__toolbar">
+            <div>
+                <h2>فهرست اعضا</h2>
+                <p><span id="membersResultCount">0</span> عضو در این نمایش</p>
+            </div>
+            <div class="member-filters">
+                <label class="member-search" for="memberSearch"><i class="fas fa-magnifying-glass"></i><input type="search" class="form-control-gold" id="memberSearch" placeholder="جستجو با نام، کد یا شماره..." oninput="filterMembers()"></label>
+                <select class="form-control-gold member-filter-select" id="memberStatusFilter" onchange="filterMembers()">
+                    <option value="all">همه وضعیت‌ها</option>
+                    <option value="Active">فعال</option>
+                    <option value="Expired">منقضی</option>
+                    <option value="Inactive">غیرفعال</option>
+                </select>
+                <button class="member-clear-filter" type="button" onclick="clearMemberFilters()" title="پاک کردن فیلترها"><i class="fas fa-filter-circle-xmark"></i><span>پاک کردن</span></button>
+            </div>
+        </div>
+        <div class="table-responsive member-table-wrap">
+            <table class="table-gold member-table">
+                <thead><tr><th>عضو</th><th>کد عضویت</th><th>تماس</th><th>طرح عضویت</th><th>تاریخ انقضا</th><th>وضعیت</th><th class="text-center">عملیات</th></tr></thead>
+                <tbody id="membersBody"></tbody>
+            </table>
+        </div>
+    </section>
+</div>

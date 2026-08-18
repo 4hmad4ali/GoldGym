@@ -1,0 +1,47 @@
+<!-- ==================== CARDS ==================== -->
+<div id="page-cards" class="page-section access-page">
+    <header class="access-page__header">
+        <div><div class="access-page__kicker">IDENTITY &amp; ACCESS</div><h1 class="access-page__title"><i class="fas fa-id-card"></i>کارت‌ها و اسکنر</h1><p class="access-page__subtitle">کارت شناسایی صادر کنید و با کد، QR یا تصویر کارت، دسترسی افراد را به‌سرعت بررسی کنید.</p></div>
+    </header>
+    <section class="access-workspace">
+        <ul class="nav access-tabs" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabCardMaker" type="button" role="tab"><i class="fas fa-id-card"></i>صدور کارت</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabScanner" type="button" role="tab"><i class="fas fa-qrcode"></i>تأیید دسترسی</button></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tabCardMaker" role="tabpanel">
+                <div class="row g-3 access-card-maker">
+                    <div class="col-lg-4">
+                        <section class="access-panel access-panel--config">
+                            <div class="access-panel__heading"><span class="access-panel__icon"><i class="fas fa-sliders"></i></span><div><h2>اطلاعات کارت</h2><p>شخص مورد نظر را برای صدور کارت انتخاب کنید.</p></div></div>
+                            <div class="form-gold">
+                                <div class="mb-3"><label class="form-label" for="cardPersonType">نوع شخص</label><select class="form-control-gold" id="cardPersonType" onchange="updateCardPersonList()"><option value="member">عضو</option><option value="trainer">مربی</option><option value="staff">کارمند</option></select></div>
+                                <div class="mb-3"><label class="form-label" for="cardPersonSelect">انتخاب شخص</label><select class="form-control-gold" id="cardPersonSelect" onchange="generateCardPreview()"></select></div>
+                                <div class="access-panel__actions"><button class="access-action is-primary" type="button" onclick="saveCardAsImage()"><i class="fas fa-download"></i>ذخیره تصویر</button><button class="access-action" type="button" onclick="window.print()"><i class="fas fa-print"></i>چاپ کارت</button></div>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="col-lg-8">
+                        <section class="access-preview-panel"><div class="access-preview-panel__heading"><div><h2>پیش‌نمایش کارت</h2><p>نسخه نهایی پیش از ذخیره یا چاپ نمایش داده می‌شود.</p></div><span><i class="fas fa-shield-halved"></i> کارت امن</span></div><div id="cardPreview" class="card-preview-container access-card-preview"><div class="access-preview-empty"><i class="fas fa-id-card"></i><strong>برای ساخت کارت آماده‌اید</strong><p>یک شخص را از بخش کناری انتخاب کنید.</p></div></div></section>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tabScanner" role="tabpanel">
+                <div class="row g-3">
+                    <div class="col-xl-7">
+                        <section class="access-panel access-panel--scanner"><div class="access-panel__heading"><span class="access-panel__icon"><i class="fas fa-fingerprint"></i></span><div><h2>روش تأیید</h2><p>یکی از روش‌های زیر را برای بررسی اعتبار کارت انتخاب کنید.</p></div></div>
+                            <div class="access-methods">
+                                <article class="access-method"><div class="access-method__icon"><i class="fas fa-keyboard"></i></div><h3>کد شناسایی</h3><p>کد کارت یا شماره پرسنلی را وارد کنید.</p><input type="text" class="form-control-gold" id="codeVerifyInput" placeholder="مثال: MBR001" onkeypress="if(event.key==='Enter') verifyByCode()"><button class="access-action is-primary w-100" type="button" onclick="verifyByCode()"><i class="fas fa-search"></i>بررسی کد</button></article>
+                                <article class="access-method"><div class="access-method__icon"><i class="fas fa-qrcode"></i></div><h3>داده QR</h3><p>محتوای QR را در این کادر بچسبانید.</p><textarea class="form-control-gold" id="qrScanData" rows="2" placeholder="داده‌های QR..."></textarea><button class="access-action is-primary w-100" type="button" onclick="verifyQR()"><i class="fas fa-shield-check"></i>تأیید QR</button></article>
+                                <article class="access-method"><div class="access-method__icon"><i class="fas fa-image"></i></div><h3>تصویر کارت</h3><p>تصویری شامل QR کارت را انتخاب کنید.</p><input type="file" class="form-control-gold access-file-input" id="cardImageUpload" accept="image/*" onchange="uploadCardImage()"><div id="imagePreview" class="access-image-preview" style="display:none;"></div><button class="access-action w-100" type="button" onclick="clearImagePreview()"><i class="fas fa-rotate-left"></i>پاک کردن تصویر</button></article>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="col-xl-5">
+                        <section class="access-result-panel"><div class="access-result-panel__heading"><div><h2><i class="fas fa-shield-halved"></i>نتیجه تأیید</h2><p>وضعیت اعتبار کارت در این بخش نمایش داده می‌شود.</p></div><button class="access-clear-all" type="button" onclick="clearScanner()" title="پاک کردن همه"><i class="fas fa-rotate-left"></i></button></div><div id="qrResult" class="access-result"><div class="access-result__placeholder"><span><i class="fas fa-qrcode"></i></span><strong>منتظر بررسی کارت</strong><p>کد، داده QR یا تصویر کارت را وارد کنید.</p></div></div></section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

@@ -9,35 +9,56 @@ function renderEquipment() {
     var bridge = getBridge();
     bridge.get_equipment(search).then(function(equipment) {
         var body = document.getElementById('equipmentBody');
+        var resultCount = document.getElementById('equipmentResultCount');
+        if (!body) return;
+        if (resultCount) resultCount.textContent = equipment.length;
         
         bridge.get_equipment_stats().then(function(stats) {
-            document.getElementById('equipmentStats').textContent =
-                'کل: ' + (stats.total || 0) + ' | فعال: ' + (stats.active || 0) +
-                ' | خراب: ' + (stats.broken || 0) + ' | غیرفعال: ' + (stats.inactive || 0);
+            setEquipmentMetric('equipmentStatTotal', stats.total);
+            setEquipmentMetric('equipmentStatActive', stats.active);
+            setEquipmentMetric('equipmentStatBroken', stats.broken);
+            setEquipmentMetric('equipmentStatInactive', stats.inactive);
         });
         
         if (equipment.length === 0) {
-            body.innerHTML = '<tr><td colspan="6" class="text-muted text-center">هیچ تجهیزاتی یافت نشد</td></tr>';
+            body.innerHTML = '<tr><td colspan="6"><div class="equipment-empty"><span><i class="fas fa-dumbbell"></i></span><strong>تجهیزاتی پیدا نشد</strong><p>جستجو را تغییر دهید یا یک مورد جدید به فهرست اضافه کنید.</p><button class="btn-gold-small" type="button" onclick="openEquipmentModal()"><i class="fas fa-plus me-1"></i>افزودن تجهیزات</button></div></td></tr>';
             return;
         }
         
         body.innerHTML = equipment.map(function(e) {
-            var statusClass = e.status === 'Active' ? 'success' : e.status === 'Broken' ? 'danger' : 'secondary';
+            var statusClass = e.status === 'Active' ? 'active' : e.status === 'Broken' ? 'broken' : 'inactive';
             var statusLabel = e.status === 'Active' ? 'فعال' : e.status === 'Broken' ? 'خراب' : 'غیرفعال';
+            var equipmentName = escapeEquipmentText(e.name || '-');
+            var category = escapeEquipmentText(e.category || 'سایر');
+            var location = escapeEquipmentText(e.location || 'محل ثبت‌نشده');
             return '<tr>' +
-                '<td>' + e.name + '</td>' +
-                '<td>' + (e.category || '-') + '</td>' +
-                '<td>' + (e.quantity || 1) + '</td>' +
-                '<td><span class="badge bg-' + statusClass + '">' + statusLabel + '</span></td>' +
-                '<td>' + (e.location || '-') + '</td>' +
-                '<td><button class="btn btn-sm btn-gold me-1" onclick="editEquipment(' + e.id + ')"><i class="fas fa-edit"></i></button>' +
-                '<button class="btn btn-sm btn-outline-gold" onclick="deleteEquipment(' + e.id + ')"><i class="fas fa-trash"></i></button></td>' +
+                '<td><div class="equipment-identity"><span class="equipment-avatar"><i class="fas fa-dumbbell"></i></span><strong>' + equipmentName + '</strong></div></td>' +
+                '<td><span class="equipment-category">' + category + '</span></td>' +
+                '<td><span class="equipment-quantity"><i class="fas fa-cubes-stacked"></i>' + (parseInt(e.quantity, 10) || 1) + ' عدد</span></td>' +
+                '<td><span class="equipment-location"><i class="fas fa-location-dot"></i>' + location + '</span></td>' +
+                '<td><span class="equipment-status equipment-status--' + statusClass + '"><i class="fas fa-circle"></i>' + statusLabel + '</span></td>' +
+                '<td><div class="equipment-row-actions"><button class="equipment-row-action is-primary" type="button" title="ویرایش تجهیزات" onclick="editEquipment(' + e.id + ')"><i class="fas fa-pen"></i></button><button class="equipment-row-action is-danger" type="button" title="حذف تجهیزات" onclick="deleteEquipment(' + e.id + ')"><i class="fas fa-trash"></i></button></div></td>' +
             '</tr>';
         }).join('');
     })['catch'](function(e) { console.error(e); });
 }
 
 function filterEquipment() { renderEquipment(); }
+
+function clearEquipmentFilter() {
+    var search = document.getElementById('equipmentSearch');
+    if (search) search.value = '';
+    renderEquipment();
+}
+
+function setEquipmentMetric(id, value) {
+    var element = document.getElementById(id);
+    if (element) element.textContent = value || 0;
+}
+
+function escapeEquipmentText(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
 
 function openEquipmentModal(data) {
     data = data || null;
@@ -117,4 +138,24 @@ function deleteEquipment(id) {
             }
         });
     }
+}
+
+function deleteEquipment(id) {
+    showDeleteConfirmation({
+        title: 'حذف تجهیزات',
+        message: 'این مورد از فهرست تجهیزات حذف می‌شود. این عمل قابل بازگشت نیست.',
+        onConfirm: function() {
+            getBridge().delete_equipment(id).then(function(result) {
+                if (result.success) {
+                    renderEquipment();
+                    updateDashboard();
+                    showToast('حذف شد', 'تجهیزات با موفقیت حذف شد');
+                } else {
+                    showToast('خطا', result.message || 'خطا در حذف تجهیزات', 'error');
+                }
+            })['catch'](function(error) {
+                showToast('خطا', 'خطا در حذف تجهیزات: ' + error.message, 'error');
+            });
+        }
+    });
 }

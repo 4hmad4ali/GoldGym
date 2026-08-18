@@ -5,6 +5,17 @@
 
 function updateDashboard() {
     var bridge = getBridge();
+    var dashboardDateEl = document.getElementById('dashboardDate');
+    if (dashboardDateEl) {
+        try {
+            dashboardDateEl.textContent = new Intl.DateTimeFormat('fa-IR', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            }).format(new Date());
+        } catch (e) {
+            dashboardDateEl.textContent = new Date().toLocaleDateString();
+        }
+    }
+
     bridge.get_dashboard_stats().then(function(stats) {
         var totalMembersEl = document.getElementById('statTotalMembers');
         var activeMembersEl = document.getElementById('statActiveMembers');
@@ -27,10 +38,10 @@ function updateDashboard() {
         if (expBody) {
             if (stats.expiring_soon && stats.expiring_soon.length > 0) {
                 expBody.innerHTML = stats.expiring_soon.map(function(m) {
-                    return '<tr><td>' + (m.member_code || '-') + '</td><td>' + (m.full_name || '-') + '</td><td>' + (m.expiry_date || '-') + '</td><td><span class="badge bg-warning text-dark">در حال انقضا</span></td></tr>';
+                    return '<tr><td>' + (m.member_code || '-') + '</td><td>' + (m.full_name || '-') + '</td><td>' + (m.expiry_date || '-') + '</td><td><span class="expiry-status">در حال انقضا</span></td></tr>';
                 }).join('');
             } else {
-                expBody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">هیچ عضوی در حال انقضا نیست</td></tr>';
+                expBody.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-4">در ۷ روز آینده، عضوی در حال انقضا نیست.</td></tr>';
             }
         }
         
@@ -44,6 +55,12 @@ function loadIncomeChart() {
         var ctx = document.getElementById('incomeChart');
         if (!ctx) return;
         if (App.chartInstances.income) { App.chartInstances.income.destroy(); }
+        var themeStyles = getComputedStyle(document.documentElement);
+        var accentColor = themeStyles.getPropertyValue('--gg-accent').trim() || '#FFB900';
+        var textMuted = themeStyles.getPropertyValue('--gg-text-muted').trim() || '#9BA8C0';
+        var textColor = themeStyles.getPropertyValue('--gg-text').trim() || '#EEF2FF';
+        var borderColor = themeStyles.getPropertyValue('--gg-border').trim() || '#2A3348';
+        var surfaceColor = themeStyles.getPropertyValue('--gg-surface').trim() || '#141922';
         
         var labels = data.map(function(d) { return d.label; });
         var values = data.map(function(d) { return d.value; });
@@ -55,26 +72,34 @@ function loadIncomeChart() {
                 datasets: [{
                     label: 'درآمد (AFN)',
                     data: values,
-                    backgroundColor: 'rgba(255, 185, 0, 0.7)',
-                    borderColor: '#FFB900',
+                    backgroundColor: accentColor + 'B8',
+                    borderColor: accentColor,
                     borderWidth: 2,
-                    borderRadius: 8
+                    borderRadius: 7,
+                    borderSkipped: false,
+                    maxBarThickness: 42
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { labels: { color: '#e0e0e0' } }
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: surfaceColor, titleColor: textColor, bodyColor: textMuted,
+                        borderColor: borderColor, borderWidth: 1, padding: 12,
+                        callbacks: { label: function(context) { return ' درآمد: ' + Number(context.raw || 0).toLocaleString() + ' AFN'; } }
+                    }
                 },
                 scales: {
                     y: { 
-                        ticks: { color: '#a0a0a0' }, 
-                        grid: { color: 'rgba(255,255,255,0.05)' } 
+                        beginAtZero: true,
+                        ticks: { color: textMuted, font: { size: 11 }, padding: 8 },
+                        grid: { color: borderColor, drawBorder: false }
                     },
                     x: { 
-                        ticks: { color: '#a0a0a0' }, 
-                        grid: { color: 'rgba(255,255,255,0.05)' } 
+                        ticks: { color: textMuted, font: { size: 11 } },
+                        grid: { display: false, drawBorder: false }
                     }
                 }
             }

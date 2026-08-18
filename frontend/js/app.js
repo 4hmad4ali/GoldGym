@@ -3,6 +3,70 @@
  * جیم گلدن — سیستم مدیریت حرفه‌ای باشگاه
  */
 
+// ── Theme system ──────────────────────────────────────────────
+// Theme tokens live in index.html. All future pages should use the --gg-* tokens
+// rather than hard-coded colours so they inherit both themes automatically.
+var ThemeManager = {
+    storageKey: 'goldenGymTheme',
+    preference: 'dark',
+
+    normalize: function(theme) {
+        if (theme === 'light' || theme === 'system') return theme;
+        return 'dark'; // Includes the legacy database value: dark_gold.
+    },
+
+    getSystemTheme: function() {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    },
+
+    apply: function(theme) {
+        this.preference = this.normalize(theme);
+        var resolvedTheme = this.preference === 'system' ? this.getSystemTheme() : this.preference;
+        document.documentElement.dataset.theme = resolvedTheme;
+        document.documentElement.dataset.themePreference = this.preference;
+
+        if (window.Chart && window.Chart.defaults) {
+            window.Chart.defaults.font.family = "Vazirmatn, 'Segoe UI', Tahoma, sans-serif";
+        }
+
+        try { localStorage.setItem(this.storageKey, this.preference); } catch (e) { /* Storage can be unavailable in restricted webviews. */ }
+
+        var picker = document.getElementById('settingsTheme');
+        if (picker) picker.value = this.preference;
+
+        if (typeof loadIncomeChart === 'function' && document.getElementById('incomeChart')) {
+            loadIncomeChart();
+        }
+    },
+
+    setPreference: function(theme, persist) {
+        this.apply(theme);
+        if (!persist) return;
+
+        var bridge = getBridge();
+        bridge.save_settings({ theme: this.preference })['catch'](function(error) {
+            console.error('Unable to save theme preference:', error);
+        });
+    },
+
+    load: function() {
+        var savedTheme = 'dark';
+        try { savedTheme = localStorage.getItem(this.storageKey) || 'dark'; } catch (e) { /* Use default. */ }
+        this.apply(savedTheme);
+
+        var manager = this;
+        getBridge().get_settings().then(function(settings) {
+            if (settings && settings.theme) manager.apply(settings.theme);
+        })['catch'](function(error) {
+            console.warn('Unable to load saved theme preference:', error);
+        });
+    }
+};
+
+function setThemePreference(theme, persist) {
+    ThemeManager.setPreference(theme, persist !== false);
+}
+
 // ── Global State ──────────────────────────────────────────────
 var App = {
     currentPage: 'dashboard',
@@ -35,7 +99,8 @@ var App = {
         equipment: 1,
         attendance: 1
     },
-    chartInstances: {}
+    chartInstances: {},
+    loadedPages: {}
 };
 
 // ── Initialize Bridge ─────────────────────────────────────────
@@ -582,8 +647,9 @@ function handleLogin(e) {
             if (mainApp) mainApp.classList.add('show');
             var userNameDisplay = document.getElementById('userNameDisplay');
             if (userNameDisplay) userNameDisplay.textContent = result.user.full_name || 'مدیر سیستم';
-            navigate('dashboard');
-            updateAll();
+            navigate('dashboard').then(function() {
+                updateAll();
+            });
         } else {
             if (errorEl) {
                 errorEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (result ? result.message : 'نام کاربری یا رمز عبور اشتباه است');
@@ -611,21 +677,29 @@ function handleLogout() {
     }
 }
 
-// ─── NAVIGATION ─────────────────────────────────────────────────
-function navigate(page) {
-    App.currentPage = page;
-    var navItems = document.querySelectorAll('.sidebar .nav-item');
-    for (var i = 0; i < navItems.length; i++) {
-        navItems[i].classList.remove('active');
-        if (navItems[i].dataset.page === page) navItems[i].classList.add('active');
-    }
-    var pageSections = document.querySelectorAll('.page-section');
-    for (var i = 0; i < pageSections.length; i++) {
-        pageSections[i].classList.remove('active');
-        if (pageSections[i].id === 'page-' + page) pageSections[i].classList.add('active');
-    }
-    
-    // Refresh page content
+// ─── PAGE TEMPLATES & NAVIGATION ─────────────────────────────────
+function loadPageTemplate(page) {
+    if (document.getElementById('page-' + page)) return Promise.resolve();
+    if (App.loadedPages[page]) return App.loadedPages[page];
+
+    var mainContent = document.getElementById('mainContent');
+    if (!mainContent) return Promise.reject(new Error('Main content area not found'));
+
+    App.loadedPages[page] = getBridge().get_page_template(page).then(function(template) {
+        if (!template) throw new Error('Page template not found: ' + page);
+        mainContent.insertAdjacentHTML('beforeend', template);
+        var loadingState = document.getElementById('pageLoading');
+        if (loadingState) loadingState.style.display = 'none';
+    })['catch'](function(error) {
+        delete App.loadedPages[page];
+        console.error('Unable to load page template:', error);
+        throw error;
+    });
+
+    return App.loadedPages[page];
+}
+
+function refreshPage(page) {
     if (page === 'dashboard' && typeof updateDashboard === 'function') updateDashboard();
     if (page === 'members' && typeof renderMembers === 'function') renderMembers();
     if (page === 'payments' && typeof renderPayments === 'function') renderPayments();
@@ -637,6 +711,31 @@ function navigate(page) {
     if (page === 'reports' && typeof generateReport === 'function') generateReport();
     if (page === 'cards' && typeof updateCardPersonList === 'function') updateCardPersonList();
     if (page === 'settings' && typeof loadSettings === 'function') loadSettings();
+}
+
+function openNewMemberFromSidebar() {
+    if (typeof openMemberModal === 'function') openMemberModal();
+}
+
+function navigate(page) {
+    App.currentPage = page;
+    var navItems = document.querySelectorAll('.sidebar .nav-item');
+    for (var i = 0; i < navItems.length; i++) {
+        navItems[i].classList.remove('active');
+        if (navItems[i].dataset.page === page) navItems[i].classList.add('active');
+    }
+    return loadPageTemplate(page).then(function() {
+        if (App.currentPage !== page) return;
+        var pageSections = document.querySelectorAll('.page-section');
+        for (var i = 0; i < pageSections.length; i++) {
+            pageSections[i].classList.remove('active');
+            if (pageSections[i].id === 'page-' + page) pageSections[i].classList.add('active');
+        }
+        refreshPage(page);
+    })['catch'](function(error) {
+        showToast('خطا', 'بارگذاری صفحه انجام نشد', 'error');
+        console.error(error);
+    });
 }
 
 // ─── TOAST NOTIFICATIONS ──────────────────────────────────────
@@ -673,16 +772,34 @@ function updateAll() {
         seedSampleData();
     }
     
-    if (typeof updateDashboard === 'function') updateDashboard();
-    if (typeof renderMembers === 'function') renderMembers();
-    if (typeof renderPayments === 'function') renderPayments();
-    if (typeof renderAttendance === 'function') renderAttendance();
-    if (typeof renderTrainers === 'function') renderTrainers();
-    if (typeof renderStaff === 'function') renderStaff();
-    if (typeof renderEquipment === 'function') renderEquipment();
-    if (typeof renderNotifications === 'function') renderNotifications();
-    if (typeof generateReport === 'function') generateReport();
-    if (typeof updateCardPersonList === 'function') updateCardPersonList();
+    var loadedPageNames = ['dashboard', 'members', 'payments', 'attendance', 'coaches', 'equipment', 'notifications', 'reports', 'cards'];
+    for (var i = 0; i < loadedPageNames.length; i++) {
+        if (document.getElementById('page-' + loadedPageNames[i])) refreshPage(loadedPageNames[i]);
+    }
+}
+
+var pendingDeleteAction = null;
+
+function showDeleteConfirmation(options) {
+    options = options || {};
+    var modalElement = document.getElementById('deleteConfirmModal');
+    var title = document.getElementById('deleteConfirmTitle');
+    var message = document.getElementById('deleteConfirmMessage');
+    var confirmButton = document.getElementById('deleteConfirmAction');
+    if (!modalElement || !confirmButton || typeof bootstrap === 'undefined') return;
+
+    if (title) title.textContent = options.title || 'حذف مورد';
+    if (message) message.textContent = options.message || 'این عمل قابل بازگشت نیست.';
+    pendingDeleteAction = typeof options.onConfirm === 'function' ? options.onConfirm : null;
+
+    confirmButton.onclick = function() {
+        var action = pendingDeleteAction;
+        pendingDeleteAction = null;
+        bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+        if (action) action();
+    };
+
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
 }
 
 function seedSampleData() {
@@ -731,6 +848,22 @@ function seedSampleData() {
 // ─── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🏋 Golden Gym v4.0 loaded successfully');
+    ThemeManager.load();
+
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function() {
+            if (typeof loadIncomeChart === 'function' && document.getElementById('incomeChart')) loadIncomeChart();
+        });
+    }
+
+    if (window.matchMedia) {
+        var systemThemeQuery = window.matchMedia('(prefers-color-scheme: light)');
+        var syncSystemTheme = function() {
+            if (ThemeManager.preference === 'system') ThemeManager.apply('system');
+        };
+        if (systemThemeQuery.addEventListener) systemThemeQuery.addEventListener('change', syncSystemTheme);
+        else if (systemThemeQuery.addListener) systemThemeQuery.addListener(syncSystemTheme);
+    }
     
     // Setup login form
     var loginForm = document.getElementById('loginForm');
