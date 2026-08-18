@@ -1,0 +1,23 @@
+[pywebview] MSHTML is deprecated. See https://pywebview.flowrl.com/guide/web_engine.html on details how to use Edge Chromium
+Exception ignored in: <finalize object at 0x147947ddd00; dead>
+Traceback (most recent call last):
+  File "C:\ProgramData\anaconda3\Lib\weakref.py", line 590, in __call__
+    return info.func(*info.args, **(info.kwargs or {}))
+  File "C:\ProgramData\anaconda3\Lib\tempfile.py", line 940, in _cleanup
+    cls._rmtree(name, ignore_errors=ignore_errors)
+  File "C:\ProgramData\anaconda3\Lib\tempfile.py", line 935, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+  File "C:\ProgramData\anaconda3\Lib\shutil.py", line 790, in rmtree
+    return _rmtree_unsafe(path, onexc)
+  File "C:\ProgramData\anaconda3\Lib\shutil.py", line 613, in _rmtree_unsafe
+    for dirpath, dirnames, filenames in results:
+  File "<frozen os>", line 372, in walk
+  File "C:\ProgramData\anaconda3\Lib\shutil.py", line 611, in onerror
+    onexc(os.scandir, err.filename, err)
+  File "C:\ProgramData\anaconda3\Lib\tempfile.py", line 907, in onexc
+    _resetperms(path)
+  File "C:\ProgramData\anaconda3\Lib\tempfile.py", line 287, in _resetperms
+    _dont_follow_symlinks(_os.chmod, path, 0o700)
+  File "C:\ProgramData\anaconda3\Lib\tempfile.py", line 276, in _dont_follow_symlinks
+    func(path, *args, follow_symlinks=False)
+PermissionError: [WinError 5] Access is denied: 'D:\\projects\\GoldenGym_MIS\\user_data\\temp\\tmp0dyffzrf'

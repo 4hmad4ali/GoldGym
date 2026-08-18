@@ -1,0 +1,12 @@
+✅ Database initialized successfully
+
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║   🏋 Golden Gym —  v4.0                                           ║
+  ║   Professional Gym Management System — Desktop Application       ║
+  ╚══════════════════════════════════════════════════════════════════╝
+
+  [Database] D:\projects\GoldenGym_MIS\data\golden_gym.db
+  [Frontend] D:\projects\GoldenGym_MIS\frontend\index.html
+  [Status] Starting application...
+
+  [Backend] Trying: edgechromium
