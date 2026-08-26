@@ -16,6 +16,7 @@ env/
 data/*.db
 data/*.db-*
 user_data/
+owner_tools/
 assets/logo.png
 assets/signature.png
 

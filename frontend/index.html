@@ -67,8 +67,32 @@
 </head>
 <body>
 
+<!-- Offline license activation (shown before login when required) -->
+<div id="licenseScreen" style="display:none;">
+    <div class="license-card">
+        <div class="login-header">
+            <i class="fas fa-shield-halved gym-icon"></i>
+            <h1 class="gym-title">فعال‌سازی نرم‌افزار</h1>
+            <p class="gym-subtitle">این نرم‌افزار بدون اینترنت و فقط برای یک دستگاه فعال می‌شود.</p>
+        </div>
+        <div class="license-body">
+            <label class="form-label" for="licenseDeviceId">شناسه دستگاه</label>
+            <div class="license-device-row">
+                <input type="text" class="form-control-gold" id="licenseDeviceId" readonly>
+                <button type="button" class="license-copy" onclick="copyDeviceId()" title="کپی شناسه"><i class="fas fa-copy"></i></button>
+            </div>
+            <p class="license-help">این شناسه را برای دریافت کد فعال‌سازی به فروشنده ارسال کنید.</p>
+            <label class="form-label" for="licenseCode">کد فعال‌سازی</label>
+            <textarea class="form-control-gold license-code" id="licenseCode" rows="5" placeholder="کد لایسنس را اینجا وارد یا Paste کنید" spellcheck="false"></textarea>
+            <button type="button" class="btn-gold" id="activateLicenseButton" onclick="activateOfflineLicense()"><i class="fas fa-key"></i> فعال‌سازی نرم‌افزار</button>
+            <div id="licenseError" class="license-error" style="display:none;"></div>
+        </div>
+        <div class="login-footer"><i class="fas fa-lock"></i> کد فعال‌سازی به همین دستگاه متصل است.</div>
+    </div>
+</div>
+
 <!-- Login Screen -->
-<div id="loginScreen">
+<div id="loginScreen" style="display:none;">
     <div class="login-card">
         <div class="login-header">
             <i class="fas fa-dumbbell gym-icon"></i>

@@ -72,6 +72,8 @@ var App = {
     currentPage: 'dashboard',
     user: null,
     isLoggedIn: false,
+    licenseValid: false,
+    license: null,
     bridge: null,
     data: {
         members: [],
@@ -150,6 +152,7 @@ window.addEventListener('pywebviewready', function() {
     if (window.pywebview && window.pywebview.api) {
         App.bridge = window.pywebview.api;
         console.log('✅ Bridge connected via pywebviewready');
+        initializeLicenseGate();
     }
 });
 
@@ -201,6 +204,9 @@ function createMockBridge() {
             return { success: false, message: 'نام کاربری یا رمز عبور اشتباه است' };
         },
         get_current_user: function() { return { full_name: 'مدیر سیستم', role: 'admin', username: 'admin' }; },
+        get_device_id: function() { return { device_id: 'GG-DEMO-DEVICE-ID' }; },
+        get_license_status: function() { return { valid: true, license_type: 'lifetime', message: 'Preview mode' }; },
+        activate_license: function() { return { success: true }; },
         change_password: function(username, newPassword) { return { success: true }; },
         get_settings: function() { return App.data.settings; },
         save_settings: function(settings) { 
@@ -667,6 +673,10 @@ function createMockBridge() {
 // ─── HANDLE LOGIN     ────
 function handleLogin(e) {
     if (e) e.preventDefault();
+
+    if (!App.licenseValid) {
+        return;
+    }
     
     var usernameEl = document.getElementById('loginUsername');
     var passwordEl = document.getElementById('loginPassword');
@@ -799,6 +809,15 @@ function refreshPage(page) {
     if (page === 'reports' && typeof generateReport === 'function') generateReport();
     if (page === 'cards' && typeof updateCardPersonList === 'function') updateCardPersonList();
     if (page === 'settings' && typeof loadSettings === 'function') loadSettings();
+    if (page === 'about') updateLicenseStatusDisplay();
+}
+
+function updateLicenseStatusDisplay() {
+    var target = document.getElementById('licenseStatusDisplay');
+    if (!target || !App.license) return;
+    target.textContent = App.license.license_type === 'lifetime'
+        ? 'دائمی و فعال'
+        : 'فعال تا ' + (App.license.expiry_date || '—');
 }
 
 function openNewMemberFromSidebar() {
@@ -973,6 +992,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🏋 Golden Gym v4.0 loaded successfully');
     ThemeManager.load();
     loadGymBrand();
+    initializeLicenseGate();
 
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(function() {
@@ -1039,5 +1059,81 @@ document.addEventListener('DOMContentLoaded', function() {
         console.warn('⚠️ pywebview bridge not available, using mock mode');
     }
 });
+
+// ─── OFFLINE LICENSE GATE ───────────────────────────────
+function setLicenseError(message) {
+    var error = document.getElementById('licenseError');
+    if (!error) return;
+    error.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + message;
+    error.style.display = 'block';
+}
+
+function showLicenseScreen(status, device) {
+    App.licenseValid = false;
+    var login = document.getElementById('loginScreen');
+    var screen = document.getElementById('licenseScreen');
+    var deviceInput = document.getElementById('licenseDeviceId');
+    if (login) login.style.display = 'none';
+    if (screen) screen.style.display = 'flex';
+    if (deviceInput) deviceInput.value = device || '';
+    if (status && status.message) setLicenseError(status.message);
+}
+
+function initializeLicenseGate() {
+    // In the packaged desktop app wait for pywebview's native bridge. The
+    // browser fallback remains available for safely previewing the interface.
+    if (window.pywebview && !window.pywebview.api) return;
+    var bridge = getBridge();
+    Promise.all([bridge.get_license_status(), bridge.get_device_id()]).then(function(values) {
+        var status = values[0] || {};
+        var device = values[1] && values[1].device_id;
+        if (status.valid) {
+            App.licenseValid = true;
+            App.license = status;
+            var login = document.getElementById('loginScreen');
+            var screen = document.getElementById('licenseScreen');
+            if (screen) screen.style.display = 'none';
+            if (login) login.style.display = 'flex';
+            return;
+        }
+        showLicenseScreen(status, device);
+    })['catch'](function() {
+        showLicenseScreen({ message: 'وضعیت لایسنس بررسی نشد. برنامه را دوباره اجرا کنید.' }, '');
+    });
+}
+
+function copyDeviceId() {
+    var input = document.getElementById('licenseDeviceId');
+    if (!input) return;
+    input.select();
+    try { document.execCommand('copy'); } catch (error) { /* Selected text can still be copied manually. */ }
+}
+
+function activateOfflineLicense() {
+    var codeElement = document.getElementById('licenseCode');
+    var button = document.getElementById('activateLicenseButton');
+    var code = codeElement ? codeElement.value.trim() : '';
+    if (!code) {
+        setLicenseError('کد فعال‌سازی را وارد کنید.');
+        return;
+    }
+    if (button) { button.disabled = true; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> در حال بررسی…'; }
+    getBridge().activate_license(code).then(function(result) {
+        if (result && result.success) {
+            App.licenseValid = true;
+            App.license = result.license || { valid: true };
+            var screen = document.getElementById('licenseScreen');
+            var login = document.getElementById('loginScreen');
+            if (screen) screen.style.display = 'none';
+            if (login) login.style.display = 'flex';
+            return;
+        }
+        setLicenseError((result && result.message) || 'کد فعال‌سازی پذیرفته نشد.');
+    })['catch'](function() {
+        setLicenseError('فعال‌سازی انجام نشد. لطفاً دوباره تلاش کنید.');
+    })['finally'](function() {
+        if (button) { button.disabled = false; button.innerHTML = '<i class="fas fa-key"></i> فعال‌سازی نرم‌افزار'; }
+    });
+}
 
 console.log('📌 Golden Gym app.js loaded');

@@ -17,6 +17,7 @@ import tempfile
 import zipfile
 import threading
 import time
+import licensing
 
 # ── For QR detection from images ──
 try:
@@ -64,6 +65,16 @@ class GoldenGymBridge:
         self._backup_lock = threading.Lock()
     
     # ── AUTH     ────
+    # ── OFFLINE LICENSING ─────────────────────────────────
+    def get_device_id(self):
+        return {'device_id': licensing.get_device_id()}
+
+    def get_license_status(self):
+        return licensing.get_license_status()
+
+    def activate_license(self, license_code):
+        return licensing.activate_license(license_code)
+
     def login(self, username, password):
         user = db.login(username, password)
         if user:
