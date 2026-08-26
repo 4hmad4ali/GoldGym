@@ -240,13 +240,19 @@ def init_db():
     
     # Settings
     default_settings = [
-        ('gym_name', 'جیم گلدن'),
+        ('gym_name', 'باشگاه شما'),
         ('gym_address', 'کابل، افغانستان'),
         ('gym_phone', '+93 700 000 000'),
         ('gym_email', 'info@goldengym.com'),
         ('currency', 'AFN'),
         ('language', 'fa'),
         ('theme', 'dark_gold'),
+        ('backup_schedule_enabled', 'true'),
+        ('backup_schedule_time', '21:00'),
+        ('backup_directory', ''),
+        ('backup_last_run_date', ''),
+        ('backup_last_reminder_date', ''),
+        ('backup_last_event', ''),
     ]
     for key, value in default_settings:
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
@@ -258,7 +264,7 @@ def init_db():
     conn.close()
     print("✅ Database initialized successfully")
 
-# ── AUTH ──────────────────────────────────────────────────────
+# ── AUTH     ────────────
 def login(username, password):
     conn = get_conn()
     c = conn.cursor()
@@ -282,7 +288,7 @@ def change_password(username, new_password):
     conn.close()
     return True
 
-# ── SETTINGS ──────────────────────────────────────────────────
+# ── SETTINGS     ────────
 def get_all_settings():
     conn = get_conn()
     c = conn.cursor()
@@ -297,7 +303,7 @@ def set_setting(key, value):
     conn.commit()
     conn.close()
 
-# ── MEMBERS ──────────────────────────────────────────────────
+# ── MEMBERS     ────────
 def get_members(search="", status="All", limit=500):
     conn = get_conn()
     c = conn.cursor()
@@ -408,7 +414,7 @@ def member_stats():
     conn.close()
     return {'total': total, 'active': active, 'expired': expired, 'inactive': inactive, 'male': male, 'female': female}
 
-# ── STAFF ────────────────────────────────────────────────────
+# ── STAFF     ──────────
 def get_staff(search="", status="All"):
     conn = get_conn()
     c = conn.cursor()
@@ -508,7 +514,7 @@ def staff_stats():
     conn.close()
     return {'total': total, 'active': active, 'inactive': inactive}
 
-# ── TRAINERS ──────────────────────────────────────────────────
+# ── TRAINERS     ────────
 def get_trainers(search="", status="All"):
     conn = get_conn()
     c = conn.cursor()
@@ -608,7 +614,7 @@ def trainer_stats():
     conn.close()
     return {'total': total, 'active': active, 'inactive': inactive}
 
-# ── PAYMENTS ──────────────────────────────────────────────────
+# ── PAYMENTS     ────────
 def get_payments(search="", date_from="", date_to=""):
     conn = get_conn()
     c = conn.cursor()
@@ -720,7 +726,7 @@ def get_payment_chart_data(period="monthly"):
     conn.close()
     return [{'label': r[0], 'value': r[1]} for r in rows]
 
-# ── EXPENSES ──────────────────────────────────────────────────
+# ── EXPENSES     ────────
 def get_expense_categories():
     conn = get_conn()
     rows = conn.execute("SELECT * FROM expense_categories ORDER BY name").fetchall()
@@ -799,7 +805,7 @@ def expense_stats():
     conn.close()
     return {'daily': daily, 'monthly': monthly, 'total': total}
 
-# ── ATTENDANCE ────────────────────────────────────────────────
+# ── ATTENDANCE     ──────
 def checkin(user_id, user_type="member"):
     conn = get_conn()
     c = conn.cursor()
@@ -884,7 +890,7 @@ def attendance_stats():
     conn.close()
     return {'today': today, 'week': week, 'month': month, 'year': year}
 
-# ── EQUIPMENT ──────────────────────────────────────────────────
+# ── EQUIPMENT     ────────
 def get_equipment(search=""):
     conn = get_conn()
     c = conn.cursor()
@@ -951,7 +957,7 @@ def equipment_stats():
     conn.close()
     return {'total': total, 'active': active, 'broken': broken, 'inactive': inactive}
 
-# ── PLANS ──────────────────────────────────────────────────────
+# ── PLANS     ────────────
 def get_plans():
     conn = get_conn()
     c = conn.cursor()
@@ -960,7 +966,7 @@ def get_plans():
     conn.close()
     return rows
 
-# ── NOTIFICATIONS ─────────────────────────────────────────────
+# ── NOTIFICATIONS     ───
 def get_notifications(unread_only=False):
     conn = get_conn()
     c = conn.cursor()
@@ -996,7 +1002,7 @@ def add_notification(title, message, ntype="info"):
     conn.commit()
     conn.close()
 
-# ── ACTIVITIES ────────────────────────────────────────────────
+# ── ACTIVITIES     ──────
 def add_activity(action_type, title, description="", details=""):
     conn = get_conn()
     conn.execute("INSERT INTO activities (action_type, title, description, details) VALUES (?, ?, ?, ?)",
@@ -1028,7 +1034,7 @@ def get_activities_count():
     conn.close()
     return count
 
-# ── DASHBOARD ──────────────────────────────────────────────────
+# ── DASHBOARD     ────────
 def dashboard_stats():
     conn = get_conn()
     c = conn.cursor()
@@ -1094,12 +1100,16 @@ def dashboard_stats():
         'expiring_soon': expiring_soon
     }
 
-# ── REPORTS ────────────────────────────────────────────────────
+# ── REPORTS     ──────────
 def get_report_data(report_type, filters=None):
     conn = get_conn()
     c = conn.cursor()
     if report_type == 'members':
-        c.execute("SELECT member_code, full_name, father_name, phone, email, gender, blood_group, membership_type, status, join_date, expiry_date FROM members")
+        c.execute("""SELECT m.member_code, m.full_name, m.father_name, m.phone, m.email, m.gender,
+                     m.blood_group, m.membership_type, m.status, m.join_date, m.expiry_date,
+                     COALESCE(SUM(p.amount), 0) AS total_paid
+                     FROM members m LEFT JOIN payments p ON p.member_id = m.id
+                     GROUP BY m.id ORDER BY m.full_name""")
     elif report_type == 'staff':
         c.execute("SELECT staff_code, full_name, father_name, phone, email, position, salary, status, hire_date FROM staff")
     elif report_type == 'trainers':

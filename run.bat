@@ -15,11 +15,11 @@ if exist ".venv\Scripts\python.exe" (
 )
 
 echo.
-echo  ============================================================
+echo        
 echo    🏋 Golden Gym — v4.0
 echo    Professional Gym Management System
 echo    Pure Desktop — No Web Server
-echo  ============================================================
+echo        
 echo.
 
 %PYTHON% --version >nul 2>&1

@@ -11,6 +11,12 @@ import database as db
 from datetime import date, datetime
 import uuid
 import sys
+import shutil
+import sqlite3
+import tempfile
+import zipfile
+import threading
+import time
 
 # ── For QR detection from images ──
 try:
@@ -28,6 +34,17 @@ if sys.platform == 'win32':
     except:
         pass
 
+def default_backup_directory():
+    """Return a writable, per-user backup location outside the app install."""
+    app_name = 'Gym Management System'
+    if sys.platform == 'win32':
+        data_home = os.environ.get('LOCALAPPDATA') or os.path.expanduser('~\\AppData\\Local')
+    elif sys.platform == 'darwin':
+        data_home = os.path.expanduser('~/Library/Application Support')
+    else:
+        data_home = os.environ.get('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
+    return os.path.join(data_home, app_name, 'Backups')
+
 class GoldenGymBridge:
     def __init__(self):
         self.current_user = None
@@ -43,8 +60,10 @@ class GoldenGymBridge:
         for folder in ['members', 'staff', 'coaches']:
             os.makedirs(os.path.join(self.user_data_path, folder), exist_ok=True)
         os.makedirs(self.assets_path, exist_ok=True)
+        self.default_backups_path = default_backup_directory()
+        self._backup_lock = threading.Lock()
     
-    # ── AUTH ──────────────────────────────────────────────
+    # ── AUTH     ────
     def login(self, username, password):
         user = db.login(username, password)
         if user:
@@ -80,7 +99,7 @@ class GoldenGymBridge:
         with open(template_path, 'r', encoding='utf-8') as template_file:
             return template_file.read()
     
-    # ── SETTINGS ──────────────────────────────────────────
+    # ── SETTINGS     
     def get_settings(self):
         return db.get_all_settings()
     
@@ -130,7 +149,7 @@ class GoldenGymBridge:
     def get_recent_activities(self, limit=20):
         return db.get_recent_activities(limit)
     
-    # ── MEMBERS ───────────────────────────────────────────
+    # ── MEMBERS     ─
     def get_members(self, search="", status="All"):
         return db.get_members(search, status)
     
@@ -218,7 +237,7 @@ class GoldenGymBridge:
     def get_next_member_code(self):
         return {'code': db.next_member_code()}
     
-    # ── PAYMENTS ──────────────────────────────────────────
+    # ── PAYMENTS     
     def get_payments(self, search="", date_from="", date_to=""):
         return db.get_payments(search, date_from, date_to)
     
@@ -272,7 +291,7 @@ class GoldenGymBridge:
     def get_payment_chart_data(self, period="monthly"):
         return db.get_payment_chart_data(period)
 
-    # ── EXPENSES ──────────────────────────────────────────
+    # ── EXPENSES     
     def get_expenses(self, search=""):
         return db.get_expenses(search)
 
@@ -283,6 +302,242 @@ class GoldenGymBridge:
             return {'success': True, 'id': expense_id}
         except Exception as e:
             return {'success': False, 'message': str(e)}
+
+    # -- BACKUPS    
+    def _backup_directory(self):
+        configured_path = (db.get_all_settings().get('backup_directory') or '').strip()
+        if configured_path and os.path.isabs(configured_path):
+            return os.path.normpath(configured_path)
+        return self.default_backups_path
+
+    def choose_backup_directory(self):
+        """Let the user pick a permanent location for scheduled backups."""
+        try:
+            import webview
+            if not webview.windows:
+                raise RuntimeError('The desktop window is not available')
+            dialog_type = getattr(getattr(webview, 'FileDialog', None), 'FOLDER', None)
+            if dialog_type is None:
+                dialog_type = getattr(webview, 'FOLDER_DIALOG', None)
+            if dialog_type is None:
+                raise RuntimeError('Folder selection is not supported by this desktop runtime')
+            selected_path = webview.windows[0].create_file_dialog(dialog_type, directory=self._backup_directory())
+            if not selected_path:
+                return {'success': False, 'cancelled': True}
+            if isinstance(selected_path, (list, tuple)):
+                selected_path = selected_path[0]
+            selected_path = os.path.abspath(str(selected_path))
+            os.makedirs(selected_path, exist_ok=True)
+            db.set_setting('backup_directory', selected_path)
+            return {'success': True, 'folder': selected_path}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def _backup_bytes(self):
+        """Build a consistent ZIP archive from a SQLite snapshot and app files."""
+        source = sqlite3.connect(db.DB_PATH)
+        destination = sqlite3.connect(':memory:')
+        try:
+            source.backup(destination)
+            database_bytes = destination.serialize()
+        finally:
+            destination.close()
+            source.close()
+
+        archive_buffer = io.BytesIO()
+        with zipfile.ZipFile(archive_buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr('manifest.json', json.dumps({
+                'format': 'golden_gym_backup',
+                'version': 1,
+                'created_at': datetime.now().isoformat()
+            }, ensure_ascii=False, indent=2))
+            archive.writestr('database/golden_gym.db', database_bytes)
+            for relative_path in ('logo.png', 'signature.png'):
+                asset_path = os.path.join(self.assets_path, relative_path)
+                if os.path.isfile(asset_path):
+                    archive.write(asset_path, 'assets/' + relative_path)
+            for folder in ('members', 'staff', 'coaches'):
+                folder_path = os.path.join(self.user_data_path, folder)
+                if os.path.isdir(folder_path):
+                    for root, _, files in os.walk(folder_path):
+                        for filename in files:
+                            path = os.path.join(root, filename)
+                            archive.write(path, os.path.join('user_data', os.path.relpath(path, self.user_data_path)))
+        return archive_buffer.getvalue()
+
+    def create_backup(self):
+        """Create a portable ZIP backup and return it as base64 for download."""
+        try:
+            with self._backup_lock:
+                archive_bytes = self._backup_bytes()
+
+            return {
+                'success': True,
+                'filename': 'golden_gym_backup_' + datetime.now().strftime('%Y%m%d_%H%M%S') + '.zip',
+                'data': base64.b64encode(archive_bytes).decode('ascii')
+            }
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def run_scheduled_backup(self):
+        """Create the nightly backup without requiring a save-file dialog."""
+        today = date.today().isoformat()
+        if db.get_all_settings().get('backup_last_run_date') == today:
+            return {'success': True, 'skipped': True}
+        try:
+            backup_directory = self._backup_directory()
+            os.makedirs(backup_directory, exist_ok=True)
+            filename = 'golden_gym_backup_' + datetime.now().strftime('%Y%m%d_%H%M%S') + '.zip'
+            output_path = os.path.join(backup_directory, filename)
+            with self._backup_lock:
+                archive_bytes = self._backup_bytes()
+                with open(output_path, 'wb') as backup_file:
+                    backup_file.write(archive_bytes)
+                with zipfile.ZipFile(output_path, 'r') as archive:
+                    if 'database/golden_gym.db' not in archive.namelist():
+                        raise ValueError('Invalid backup archive')
+            db.set_setting('backup_last_run_date', today)
+            db.set_setting('backup_last_event', json.dumps({
+                'status': 'success', 'timestamp': datetime.now().isoformat(), 'filename': filename
+            }))
+            db.add_notification('پشتیبان‌گیری انجام شد', 'نسخه خودکار در ' + output_path + ' ذخیره شد.', 'success')
+            return {'success': True, 'path': output_path, 'filename': filename}
+        except Exception as e:
+            message = str(e)
+            db.set_setting('backup_last_event', json.dumps({
+                'status': 'error', 'timestamp': datetime.now().isoformat(), 'message': message
+            }))
+            db.add_notification('پشتیبان‌گیری ناموفق بود', 'لطفاً از بخش تنظیمات یک نسخه پشتیبان دستی تهیه کنید. ' + message, 'error')
+            return {'success': False, 'message': message}
+
+    def get_backup_schedule_status(self):
+        settings = db.get_all_settings()
+        try:
+            last_event = json.loads(settings.get('backup_last_event') or '{}')
+        except (TypeError, ValueError):
+            last_event = {}
+        return {
+            'enabled': settings.get('backup_schedule_enabled', 'true') == 'true',
+            'time': settings.get('backup_schedule_time', '21:00'),
+            'folder': self._backup_directory(),
+            'last_run_date': settings.get('backup_last_run_date', ''),
+            'last_event': last_event
+        }
+
+    def start_backup_scheduler(self):
+        """Run one lightweight scheduler while the desktop app is open."""
+        def scheduler():
+            while True:
+                settings = db.get_all_settings()
+                now = datetime.now()
+                if now.strftime('%H:%M') == settings.get('backup_schedule_time', '21:00'):
+                    if settings.get('backup_schedule_enabled', 'true') == 'true':
+                        self.run_scheduled_backup()
+                    elif settings.get('backup_last_reminder_date') != now.date().isoformat():
+                        db.set_setting('backup_last_reminder_date', now.date().isoformat())
+                        db.set_setting('backup_last_event', json.dumps({
+                            'status': 'reminder', 'timestamp': now.isoformat()
+                        }))
+                        db.add_notification('یادآوری پشتیبان‌گیری', 'لطفاً از بخش تنظیمات یک نسخه پشتیبان دستی تهیه کنید.', 'info')
+                time.sleep(20)
+        threading.Thread(target=scheduler, name='nightly-backup', daemon=True).start()
+
+    def save_backup(self):
+        """Save a verified backup with the native desktop file-save dialog."""
+        result = self.create_backup()
+        if not result.get('success'):
+            return result
+        try:
+            import webview
+            if not webview.windows:
+                raise RuntimeError('The desktop window is not available')
+            dialog_type = getattr(getattr(webview, 'FileDialog', None), 'SAVE', webview.SAVE_DIALOG)
+            selected_path = webview.windows[0].create_file_dialog(
+                dialog_type,
+                save_filename=result['filename'],
+                file_types=('Golden Gym backups (*.zip)', 'All files (*.*)')
+            )
+            if not selected_path:
+                return {'success': False, 'cancelled': True}
+            if isinstance(selected_path, (list, tuple)):
+                selected_path = selected_path[0]
+            if not str(selected_path).lower().endswith('.zip'):
+                selected_path += '.zip'
+            archive_bytes = base64.b64decode(result['data'])
+            with open(selected_path, 'wb') as backup_file:
+                backup_file.write(archive_bytes)
+            with zipfile.ZipFile(selected_path, 'r') as archive:
+                if 'database/golden_gym.db' not in archive.namelist():
+                    raise ValueError('Invalid backup archive')
+            return {
+                'success': True,
+                'path': selected_path,
+                'filename': os.path.basename(selected_path),
+                'size': len(archive_bytes)
+            }
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+
+    def restore_backup(self, base64_data):
+        """Validate and restore a backup ZIP uploaded by the user."""
+        temp_root = os.path.join(self.user_data_path, 'temp')
+        os.makedirs(temp_root, exist_ok=True)
+        temp_db = os.path.join(temp_root, 'restore_' + uuid.uuid4().hex + '.db')
+        try:
+            encoded = base64_data.split(',', 1)[-1]
+            archive_buffer = io.BytesIO(base64.b64decode(encoded, validate=True))
+            with zipfile.ZipFile(archive_buffer, 'r') as archive:
+                for member in archive.infolist():
+                    if member.filename.startswith('/') or '..' in member.filename.split('/'):
+                        raise ValueError('Invalid backup archive')
+                names = set(archive.namelist())
+                if 'manifest.json' not in names or 'database/golden_gym.db' not in names:
+                    raise ValueError('This file is not a Golden Gym backup')
+                manifest = json.loads(archive.read('manifest.json').decode('utf-8'))
+                database_bytes = archive.read('database/golden_gym.db')
+            if manifest.get('format') != 'golden_gym_backup' or manifest.get('version') != 1:
+                raise ValueError('Unsupported backup format')
+
+            check = sqlite3.connect(':memory:')
+            try:
+                check.deserialize(database_bytes)
+                integrity = check.execute('PRAGMA integrity_check').fetchone()[0]
+            finally:
+                check.close()
+            if integrity != 'ok':
+                raise ValueError('The backup database failed its integrity check')
+
+            with open(temp_db, 'wb') as database_file:
+                database_file.write(database_bytes)
+            os.replace(temp_db, db.DB_PATH)
+            os.makedirs(self.assets_path, exist_ok=True)
+            for filename in ('logo.png', 'signature.png'):
+                target = os.path.join(self.assets_path, filename)
+                asset_name = 'assets/' + filename
+                if asset_name in names:
+                    with open(target, 'wb') as asset_file:
+                        asset_file.write(archive_buffer.getvalue() and zipfile.ZipFile(io.BytesIO(archive_buffer.getvalue())).read(asset_name))
+                elif os.path.isfile(target):
+                    os.remove(target)
+            for folder in ('members', 'staff', 'coaches'):
+                target = os.path.join(self.user_data_path, folder)
+                if os.path.isdir(target):
+                    shutil.rmtree(target)
+                os.makedirs(target, exist_ok=True)
+                for member_name in names:
+                    prefix = 'user_data/' + folder + '/'
+                    if member_name.startswith(prefix) and not member_name.endswith('/'):
+                        relative = member_name[len(prefix):]
+                        output = os.path.join(target, relative)
+                        os.makedirs(os.path.dirname(output), exist_ok=True)
+                        with open(output, 'wb') as photo_file:
+                            photo_file.write(zipfile.ZipFile(io.BytesIO(archive_buffer.getvalue())).read(member_name))
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
+        finally:
+            if os.path.isfile(temp_db):
+                os.remove(temp_db)
 
     def update_expense(self, expense_id, data):
         try:
@@ -364,7 +619,7 @@ class GoldenGymBridge:
     def get_attendance_stats(self):
         return db.attendance_stats()
     
-    # ── TRAINERS ──────────────────────────────────────────
+    # ── TRAINERS     
     def get_trainers(self, search=""):
         return db.get_trainers(search)
     
@@ -425,7 +680,7 @@ class GoldenGymBridge:
     def get_trainer_stats(self):
         return db.trainer_stats()
     
-    # ── STAFF ─────────────────────────────────────────────
+    # ── STAFF     ───
     def get_staff(self, search=""):
         return db.get_staff(search)
     
@@ -532,7 +787,7 @@ class GoldenGymBridge:
     def get_equipment_stats(self):
         return db.equipment_stats()
     
-    # ── PLANS ─────────────────────────────────────────────
+    # ── PLANS     ───
     def get_plans(self):
         return db.get_plans()
     
@@ -565,7 +820,10 @@ class GoldenGymBridge:
     # ── QR CODE GENERATION ──────────────────────────────
     def generate_qr(self, data):
         try:
-            qr = qrcode.QRCode(version=3, box_size=5, border=2, error_correction=qrcode.constants.ERROR_CORRECT_H)
+            # Keep QR modules crisp when the card preview is rendered and then
+            # sent to a physical CR80 printer. High correction tolerates small
+            # print imperfections without making a member card unscannable.
+            qr = qrcode.QRCode(version=3, box_size=12, border=4, error_correction=qrcode.constants.ERROR_CORRECT_H)
             qr.add_data(data)
             qr.make(fit=True)
             img = qr.make_image(fill_color="#0D1117", back_color="white")
@@ -641,15 +899,27 @@ class GoldenGymBridge:
             return {'success': False, 'message': f'خطا در چاپ کارت: {str(e)}'}
 
     def save_rendered_card(self, base64_image, code, card_type='member'):
-        """Persist the high-resolution preview PNG exactly as rendered in the UI."""
+        """Save a high-resolution PNG using a user-selected destination."""
         try:
-            folder_map = {'member': 'members', 'staff': 'staff', 'trainer': 'coaches'}
-            folder = os.path.join(self.user_data_path, folder_map.get(card_type, 'members'))
-            os.makedirs(folder, exist_ok=True)
+            import webview
+            if not webview.windows:
+                raise RuntimeError('The desktop window is not available')
+            safe_code = ''.join(char for char in str(code) if char.isalnum() or char in ('-', '_')) or 'card'
+            dialog_type = getattr(getattr(webview, 'FileDialog', None), 'SAVE', webview.SAVE_DIALOG)
+            selected_path = webview.windows[0].create_file_dialog(
+                dialog_type,
+                save_filename=f"gym_card_{safe_code}.png",
+                file_types=('PNG image (*.png)', 'All files (*.*)')
+            )
+            if not selected_path:
+                return {'success': False, 'cancelled': True}
+            if isinstance(selected_path, (list, tuple)):
+                selected_path = selected_path[0]
+            if not str(selected_path).lower().endswith('.png'):
+                selected_path += '.png'
             image = Image.open(io.BytesIO(base64.b64decode(base64_image))).convert('RGB')
-            filename = os.path.join(folder, f"{code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
-            image.save(filename, 'PNG', optimize=True)
-            return {'success': True, 'path': filename, 'width': image.width, 'height': image.height}
+            image.save(selected_path, 'PNG', optimize=True)
+            return {'success': True, 'path': selected_path, 'width': image.width, 'height': image.height}
         except Exception as e:
             return {'success': False, 'message': f'خطا در ذخیره تصویر کارت: {str(e)}'}
 
@@ -669,7 +939,9 @@ class GoldenGymBridge:
             card_height = round((53.98 / 25.4) * dc.GetDeviceCaps(win32con.LOGPIXELSY))
             x = max(0, (dc.GetDeviceCaps(win32con.HORZRES) - card_width) // 2)
             y = max(0, (dc.GetDeviceCaps(win32con.VERTRES) - card_height) // 2)
-            image = image.resize((card_width, card_height), Image.Resampling.LANCZOS)
+            # Nearest-neighbour preserves the hard black/white QR module edges.
+            # Smoothing can create grey modules that barcode scanners reject.
+            image = image.resize((card_width, card_height), Image.Resampling.NEAREST)
             dc.StartDoc('Golden Gym CR80 Card')
             dc.StartPage()
             ImageWin.Dib(image).draw(dc.GetHandleOutput(), (x, y, x + card_width, y + card_height))
@@ -709,9 +981,9 @@ class GoldenGymBridge:
             draw.ellipse([25, 22, 80, 77], fill='#1A1A2E')
             draw.text((42, 37), "🏋", fill='#FFB900', font=None)
         
-        gym_name = data.get('gym_name', 'جیم گلدن')
+        gym_name = data.get('gym_name', 'باشگاه شما')
         draw.text((95, 25), gym_name, fill='#1A1A2E', font=None)
-        draw.text((95, 50), "Golden Gym", fill='#1A1A2E', font=None)
+        draw.text((95, 50), "FITNESS CLUB", fill='#1A1A2E', font=None)
         
         type_label = data.get('type_label', 'عضو')
         type_colors = {'عضو': '#2ecc71', 'مربی': '#3498db', 'کارمند': '#e67e22'}
@@ -923,7 +1195,7 @@ class GoldenGymBridge:
         except Exception as e:
             return {'success': False, 'message': f'خطا در اسکن کارت: {str(e)}'}
     
-    # ── REPORTS ───────────────────────────────────────────
+    # ── REPORTS     ─
     def get_report_data(self, report_type, filters=None):
         return db.get_report_data(report_type, filters)
     
@@ -945,8 +1217,35 @@ class GoldenGymBridge:
             return {'success': True, 'path': file_path}
         except Exception as e:
             return {'success': False, 'message': str(e)}
+
+    def save_report_csv_data(self, csv_data, suggested_filename='gym_report_solar_hijri.csv'):
+        """Save client-rendered report data at a location selected by the user."""
+        try:
+            import webview
+            if not webview.windows:
+                raise RuntimeError('The desktop window is not available')
+            safe_name = os.path.basename(str(suggested_filename or 'gym_report_solar_hijri.csv'))
+            if not safe_name.lower().endswith('.csv'):
+                safe_name += '.csv'
+            dialog_type = getattr(getattr(webview, 'FileDialog', None), 'SAVE', webview.SAVE_DIALOG)
+            selected_path = webview.windows[0].create_file_dialog(
+                dialog_type,
+                save_filename=safe_name,
+                file_types=('CSV files (*.csv)', 'All files (*.*)')
+            )
+            if not selected_path:
+                return {'success': False, 'cancelled': True}
+            if isinstance(selected_path, (list, tuple)):
+                selected_path = selected_path[0]
+            if not str(selected_path).lower().endswith('.csv'):
+                selected_path += '.csv'
+            with open(selected_path, 'w', encoding='utf-8-sig', newline='') as report_file:
+                report_file.write(str(csv_data))
+            return {'success': True, 'path': selected_path}
+        except Exception as e:
+            return {'success': False, 'message': str(e)}
     
-    # ── UTILITY ───────────────────────────────────────────
+    # ── UTILITY     ─
     def get_current_date(self):
         return date.today().isoformat()
     

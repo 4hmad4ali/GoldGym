@@ -1,4 +1,4 @@
-<!-- ==================== TRAINER FORM ==================== -->
+<!--    TRAINER FORM    -->
 <div id="page-trainer-form" class="page-section team-form-page">
     <div class="team-form-page__header">
         <div>
@@ -28,7 +28,7 @@
             <div class="team-form-grid form-gold">
                 <div><label class="form-label" for="tStatus">وضعیت</label><select class="form-control-gold" id="tStatus"><option value="Active">فعال</option><option value="Inactive">غیرفعال</option></select></div>
                 <div><label class="form-label" for="tSalary">حقوق (AFN)</label><input type="number" class="form-control-gold" id="tSalary" min="0" dir="ltr"></div>
-                <div><label class="form-label" for="tHireDate">تاریخ استخدام</label><input type="date" class="form-control-gold" id="tHireDate"></div>
+                <div><label class="form-label" for="tHireDate">تاریخ استخدام</label><input type="text" class="form-control-gold afghan-date-input" id="tHireDate" placeholder="۱۴۰۵/۰۶/۰۴" data-jdp data-jdp-target-value-input="#tHireDateIso" data-jdp-target-value-type="gregorian" readonly><input type="hidden" id="tHireDateIso"></div>
                 <div class="team-form-grid__wide"><label class="form-label" for="tNotes">یادداشت</label><textarea class="form-control-gold" id="tNotes" rows="3" placeholder="توضیحات تکمیلی درباره مربی..."></textarea></div>
             </div>
         </section>

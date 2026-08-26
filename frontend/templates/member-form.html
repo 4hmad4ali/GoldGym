@@ -1,4 +1,4 @@
-<!-- ==================== MEMBER FORM ==================== -->
+<!--    MEMBER FORM    -->
 <div id="page-member-form" class="page-section member-form-page">
     <div class="member-form-page__header">
         <div>
@@ -24,7 +24,7 @@
                 <div><label class="form-label" for="mEmail">ایمیل</label><input type="email" class="form-control-gold" id="mEmail" dir="ltr" autocomplete="email"></div>
                 <div><label class="form-label" for="mGender">جنسیت</label><select class="form-control-gold" id="mGender"><option value="Male">مرد</option><option value="Female">زن</option></select></div>
                 <div><label class="form-label" for="mBlood">گروه خونی</label><select class="form-control-gold" id="mBlood"><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select></div>
-                <div><label class="form-label" for="mDob">تاریخ تولد</label><input type="date" class="form-control-gold" id="mDob"></div>
+                <div><label class="form-label" for="mDob">تاریخ تولد</label><input type="text" class="form-control-gold afghan-date-input" id="mDob" placeholder="۱۴۰۵/۰۶/۰۴" data-jdp data-jdp-target-value-input="#mDobIso" data-jdp-target-value-type="gregorian" readonly><input type="hidden" id="mDobIso"></div>
                 <div><label class="form-label" for="mEmergency">تماس اضطراری</label><input type="text" class="form-control-gold" id="mEmergency" dir="ltr"></div>
                 <div class="member-form-grid__wide"><label class="form-label" for="mAddress">آدرس</label><input type="text" class="form-control-gold" id="mAddress"></div>
             </div>
@@ -33,8 +33,8 @@
         <section class="member-form-card">
             <div class="member-form-card__heading"><span><i class="fas fa-id-card"></i></span><div><h2>اطلاعات عضویت</h2><p>طرح عضویت و وضعیت فعلی عضو را تعیین کنید.</p></div></div>
             <div class="member-form-grid form-gold">
-                <div><label class="form-label" for="mPlan">طرح عضویت</label><select class="form-control-gold" id="mPlan"><option value="روزانه">روزانه</option><option value="هفتگی">هفتگی</option><option value="ماهانه">ماهانه</option><option value="سه‌ماهه">سه‌ماهه</option><option value="شش‌ماهه">شش‌ماهه</option><option value="سالانه">سالانه</option><option value="VIP سالانه">VIP سالانه</option></select></div>
-                <div><label class="form-label" for="mExpiry">تاریخ انقضا</label><input type="date" class="form-control-gold" id="mExpiry"></div>
+                <div><label class="form-label" for="mPlan">طرح عضویت</label><select class="form-control-gold" id="mPlan" onchange="updateMemberExpiryForPlan()"><option value="روزانه">روزانه</option><option value="هفتگی">هفتگی</option><option value="ماهانه">ماهانه</option><option value="سه‌ماهه">سه‌ماهه</option><option value="شش‌ماهه">شش‌ماهه</option><option value="سالانه">سالانه</option><option value="VIP سالانه">VIP سالانه</option></select></div>
+                <div><label class="form-label" for="mExpiry">تاریخ انقضا</label><input type="text" class="form-control-gold afghan-date-input" id="mExpiry" placeholder="۱۴۰۵/۰۶/۰۴" data-jdp data-jdp-target-value-input="#mExpiryIso" data-jdp-target-value-type="gregorian" readonly><input type="hidden" id="mExpiryIso"></div>
                 <div><label class="form-label" for="mStatus">وضعیت</label><select class="form-control-gold" id="mStatus"><option value="Active">فعال</option><option value="Expired">منقضی</option><option value="Inactive">غیرفعال</option></select></div>
                 <div class="member-form-grid__wide"><label class="form-label" for="mNotes">یادداشت</label><textarea class="form-control-gold" id="mNotes" rows="3" placeholder="توضیحات تکمیلی درباره عضو، در صورت نیاز..."></textarea></div>
             </div>

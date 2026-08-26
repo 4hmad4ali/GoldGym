@@ -1,4 +1,4 @@
-<!-- ==================== SETTINGS ==================== -->
+<!-- SETTINGS    -->
 <div id="page-settings" class="page-section settings-page">
     <div class="settings-page__header">
         <div>
@@ -13,7 +13,7 @@
         <aside class="settings-page__summary">
             <div class="settings-brand-card">
                 <div class="settings-brand-card__mark"><i class="fas fa-dumbbell"></i></div>
-                <div><span>پروفایل باشگاه</span><strong id="settingsGymNamePreview">جیم گلدن</strong></div>
+                <div><span>پروفایل باشگاه</span><strong id="settingsGymNamePreview">باشگاه شما</strong></div>
             </div>
             <p>تغییرات شما پس از ذخیره، در سراسر سیستم اعمال می‌شود.</p>
             <div class="settings-page__nav" aria-label="بخش‌های تنظیمات">
@@ -21,6 +21,7 @@
                 <a href="#settingsAppearance"><i class="fas fa-palette"></i> ظاهر برنامه</a>
                 <a href="#settingsSecurity"><i class="fas fa-shield-alt"></i> امنیت حساب</a>
                 <a href="#settingsBrand"><i class="fas fa-image"></i> هویت بصری</a>
+                <a href="#settingsBackupClean"><i class="fas fa-database"></i> پشتیبان‌گیری و بازیابی</a>
             </div>
         </aside>
 
@@ -28,7 +29,7 @@
             <section class="settings-card" id="settingsProfile">
                 <div class="settings-card__heading"><span class="settings-card__icon"><i class="fas fa-building"></i></span><div><h3>اطلاعات باشگاه</h3><p>این اطلاعات در رسیدها، گزارش‌ها و بخش‌های عمومی نمایش داده می‌شود.</p></div></div>
                 <div class="settings-form-grid form-gold">
-                    <div class="settings-field settings-field--wide"><label class="form-label" for="settingsGymName">نام باشگاه</label><input type="text" class="form-control-gold" id="settingsGymName" value="جیم گلدن"></div>
+                    <div class="settings-field settings-field--wide"><label class="form-label" for="settingsGymName">نام باشگاه</label><input type="text" class="form-control-gold" id="settingsGymName" value="باشگاه شما" maxlength="100" required></div>
                     <div class="settings-field settings-field--wide"><label class="form-label" for="settingsAddress">آدرس</label><input type="text" class="form-control-gold" id="settingsAddress" value="کابل، افغانستان"></div>
                     <div class="settings-field"><label class="form-label" for="settingsPhone">شماره تماس</label><input type="text" class="form-control-gold" id="settingsPhone" value="+93 700 000 000" dir="ltr"></div>
                     <div class="settings-field"><label class="form-label" for="settingsEmail">ایمیل</label><input type="email" class="form-control-gold" id="settingsEmail" value="info@goldengym.af" dir="ltr"></div>
@@ -57,6 +58,19 @@
                     <div class="settings-upload-field"><div class="settings-upload-field__label"><i class="fas fa-image"></i><div><strong>لوگوی باشگاه</strong><span>فقط تصویر PNG</span></div></div><input type="file" class="form-control-gold" accept="image/png" id="logoUpload" onchange="uploadLogo()"><div id="logoPreviewWrap" class="settings-upload-preview" style="display:none;"><img id="logoPreview" alt="پیش‌نمایش لوگوی باشگاه"></div></div>
                     <div class="settings-upload-field"><div class="settings-upload-field__label"><i class="fas fa-signature"></i><div><strong>امضای باشگاه</strong><span>فقط تصویر PNG</span></div></div><input type="file" class="form-control-gold" accept="image/png" id="signatureUpload" onchange="uploadSignature()"><div id="signaturePreviewWrap" class="settings-upload-preview settings-upload-preview--signature" style="display:none;"><img id="signaturePreview" alt="پیش‌نمایش امضای باشگاه"></div></div>
                 </div>
+            </section>
+            <section class="settings-card" id="settingsBackupClean">
+                <div class="settings-card__heading"><span class="settings-card__icon"><i class="fas fa-database"></i></span><div><h3>بازیابی و پشتیبان‌گیری</h3><p>دانلود پشتیبان گیری و بازیابی داده ها</p></div></div>
+                <div class="settings-backup-grid">
+                    <button class="btn-gold" type="button" onclick="downloadBackup()"><i class="fas fa-download"></i> دانلود پشتیبان</button>
+                    <label class="btn-outline-gold settings-backup-upload"><i class="fas fa-upload"></i> آپلود و بازیابی<input type="file" accept=".zip,application/zip" onchange="restoreBackup(this)"></label>
+                </div>
+                <div class="settings-backup-grid" style="margin-top: 14px;">
+                    <label class="settings-backup-upload"><input type="checkbox" id="backupScheduleEnabled" checked> پشتیبان‌گیری خودکار هر شب ساعت ۹</label>
+                    <button class="btn-outline-gold" type="button" onclick="chooseBackupDirectory()"><i class="fas fa-folder-open"></i> انتخاب محل ذخیره</button>
+                    <small class="settings-backup-note" id="backupScheduleStatus"></small>
+                </div>
+                <small class="settings-backup-note"><i class="fas fa-circle-info"></i> بازیابی یک پشتیبان جایگزین کردن داده‌های فعلی و تصاویر آپلود شده می‌شود.</small>
             </section>
         </div>
     </div>

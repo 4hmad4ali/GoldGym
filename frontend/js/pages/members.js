@@ -41,7 +41,7 @@ function renderMembers() {
                 '<td><span class="member-code">' + memberCode + '</span></td>' +
                 '<td><span class="member-phone"><i class="fas fa-phone"></i>' + phone + '</span></td>' +
                 '<td><span class="member-plan">' + membershipType + '</span></td>' +
-                '<td><span class="member-expiry"><i class="far fa-calendar"></i>' + escapeMemberText(m.expiry_date || '-') + '</span></td>' +
+                '<td><span class="member-expiry"><i class="far fa-calendar"></i>' + escapeMemberText(afghanDate(m.expiry_date || '') || '-') + '</span></td>' +
                 '<td><span class="member-status member-status--' + statusClass + '"><i class="fas fa-circle"></i>' + statusLabel + '</span></td>' +
                 '<td><div class="member-row-actions"><button class="member-row-action is-primary" type="button" title="ویرایش عضو" onclick="editMember(' + m.id + ')"><i class="fas fa-pen"></i></button>' +
                 '<button class="member-row-action" type="button" title="نمایش کارت" onclick="viewMemberCard(\'' + String(m.member_code || '').replace(/'/g, "\\'") + '\')"><i class="fas fa-qrcode"></i></button>' +
@@ -128,9 +128,9 @@ function saveMember() {
         email: getMemberFormControl('mEmail').value,
         gender: getMemberFormControl('mGender').value,
         blood_group: getMemberFormControl('mBlood').value,
-        date_of_birth: getMemberFormControl('mDob').value,
+        date_of_birth: getMemberFormControl('mDobIso').value,
         membership_type: getMemberFormControl('mPlan').value,
-        expiry_date: getMemberFormControl('mExpiry').value,
+        expiry_date: getMemberFormControl('mExpiryIso').value,
         status: getMemberFormControl('mStatus').value,
         emergency_contact: getMemberFormControl('mEmergency').value,
         address: getMemberFormControl('mAddress').value,
@@ -214,9 +214,11 @@ function openMemberModal(data) {
             getMemberFormControl('mEmail').value = data.email || '';
             getMemberFormControl('mGender').value = data.gender || 'Male';
             getMemberFormControl('mBlood').value = data.blood_group || 'A+';
-            getMemberFormControl('mDob').value = data.date_of_birth || '';
+            getMemberFormControl('mDob').value = afghanDate(data.date_of_birth || '');
+            getMemberFormControl('mDobIso').value = data.date_of_birth || '';
             getMemberFormControl('mPlan').value = data.membership_type || 'ماهانه';
-            getMemberFormControl('mExpiry').value = data.expiry_date || '';
+            getMemberFormControl('mExpiry').value = afghanDate(data.expiry_date || '');
+            getMemberFormControl('mExpiryIso').value = data.expiry_date || '';
             getMemberFormControl('mStatus').value = data.status || 'Active';
             getMemberFormControl('mEmergency').value = data.emergency_contact || '';
             getMemberFormControl('mAddress').value = data.address || '';
@@ -225,13 +227,36 @@ function openMemberModal(data) {
                 if (photo) setPersonPhotoPreview('mPhotoPreview', photo);
             });
         } else {
-            getMemberFormControl('mExpiry').value = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            updateMemberExpiryForPlan();
         }
     });
 }
 
 function getMemberFormControl(id) {
     return document.querySelector('#page-member-form [id="' + id + '"]');
+}
+
+function updateMemberExpiryForPlan() {
+    var planControl = getMemberFormControl('mPlan');
+    var expiryControl = getMemberFormControl('mExpiry');
+    var expiryIsoControl = getMemberFormControl('mExpiryIso');
+    if (!planControl || !expiryControl || !expiryIsoControl) return;
+
+    var durations = {
+        'روزانه': 1,
+        'هفتگی': 7,
+        'ماهانه': 30,
+        'سه‌ماهه': 90,
+        'شش‌ماهه': 180,
+        'سالانه': 365,
+        'VIP سالانه': 365
+    };
+    var days = durations[planControl.value] || 30;
+    var expiry = new Date();
+    expiry.setDate(expiry.getDate() + days);
+    var expiryIso = expiry.toISOString().slice(0, 10);
+    expiryControl.value = afghanDate(expiryIso);
+    expiryIsoControl.value = expiryIso;
 }
 
 function deleteMember(id) {

@@ -71,7 +71,7 @@ function generateCardPreview() {
             var sigBase64 = results[2];
             var qrResult = results[3];
             
-            var gymName = settings.gym_name || 'جیم گلدن';
+            var gymName = settings.gym_name || 'باشگاه شما';
             
             var logoBoxContent = logoBase64
                 ? '<img src="data:image/png;base64,' + logoBase64 + '" style="width:100%;height:100%;object-fit:contain;border-radius:10px;">'
@@ -121,7 +121,7 @@ function generateCardPreview() {
                     
                     <!-- Bottom: status spacer (right) — signature box (left) -->
                     <div style="display:flex;justify-content:space-between;align-items:flex-end;">
-                        <div style="font-size:8px;color:#999;">Golden Gym — ${new Date().toISOString().split('T')[0]}</div>
+                        <div style="font-size:8px;color:#999;">${escapeCardText(gymName)} — ${new Date().toISOString().split('T')[0]}</div>
                         <div style="text-align:center;">
                             <div style="width:110px;height:48px;border:2px solid #1a1a2e;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff;">${signatureContent}</div>
                             <div style="font-size:9px;color:#666;font-weight:700;margin-top:2px;">تاییدی جیم</div>
@@ -205,14 +205,14 @@ function generateCardPreview() {
         var typeLabels = { member: 'عضو باشگاه', trainer: 'مربی باشگاه', staff: 'کارمند باشگاه' };
         var detailLabel = type === 'member' ? 'نوع عضویت' : type === 'trainer' ? 'تخصص' : 'سمت';
         var detailValue = person.membership_type || person.specialization || person.position || '—';
-        var expiry = person.expiry_date || 'ندارد';
+        var expiry = person.expiry_date ? afghanDate(person.expiry_date) : 'ندارد';
         var statusActive = person.status === 'Active';
         var logoMarkup = logo ? '<img src="data:image/png;base64,' + logo + '" alt="لوگو">' : '<i class="fas fa-dumbbell"></i>';
         var signatureMarkup = signature ? '<img src="data:image/png;base64,' + signature + '" alt="امضای مدیر">' : '<span>امضای مدیر</span>';
         var qrMarkup = qr && qr.success && qr.image ? '<img src="data:image/png;base64,' + qr.image + '" alt="QR کارت">' : '<i class="fas fa-qrcode"></i>';
         preview.innerHTML = '<article class="gym-card professional-card" dir="rtl">' +
             '<div class="professional-card__accent"></div>' +
-            '<header class="professional-card__header"><div class="professional-card__brand"><span class="professional-card__logo">' + logoMarkup + '</span><div><strong>' + escapeCardText(settings.gym_name || 'جیم گلدن') + '</strong><span>GOLDEN GYM · FITNESS CLUB</span></div></div><div class="professional-card__kind"><i class="fas fa-id-card"></i>' + escapeCardText(typeLabels[type]) + '</div></header>' +
+            '<header class="professional-card__header"><div class="professional-card__brand"><span class="professional-card__logo">' + logoMarkup + '</span><div><strong>' + escapeCardText(settings.gym_name || 'باشگاه شما') + '</strong><span>FITNESS CLUB</span></div></div><div class="professional-card__kind"><i class="fas fa-id-card"></i>' + escapeCardText(typeLabels[type]) + '</div></header>' +
             '<div class="professional-card__main"><div class="professional-card__person"><span class="professional-card__avatar professional-card__avatar--photo"><i class="fas fa-camera"></i></span><div><h2>' + escapeCardText(person.full_name || '—') + '</h2><p>فرزند ' + escapeCardText(person.father_name || '—') + '</p><code>' + escapeCardText(personCode) + '</code></div></div><div class="professional-card__qr">' + qrMarkup + '<span>اسکن برای اعتبارسنجی</span></div></div>' +
             '<div class="professional-card__details"><div><span>' + detailLabel + '</span><strong>' + escapeCardText(detailValue) + '</strong></div><div><span>تاریخ انقضا</span><strong>' + escapeCardText(expiry) + '</strong></div><div><span>وضعیت کارت</span><strong class="professional-card__status ' + (statusActive ? 'is-active' : 'is-inactive') + '"><i class="fas fa-circle"></i>' + (statusActive ? 'فعال' : 'غیرفعال') + '</strong></div></div>' +
             '<footer class="professional-card__footer"><div class="professional-card__signature">' + signatureMarkup + '<span>امضا و تأیید مدیریت</span></div><small>مالک این کارت، عضو ثبت‌شده باشگاه است</small></footer>' +
@@ -269,7 +269,7 @@ function getCardSaveData() {
             issue_date: new Date().toISOString().split('T')[0],
             photo_path: person.photo_path || '',
             qr_data: qrPrefix + '|' + personCode + '|' + (person.full_name || '') + '|' + (person.status || '') + '|' + (person.expiry_date || ''),
-            gym_name: settings.gym_name || 'جیم گلدن',
+            gym_name: settings.gym_name || 'باشگاه شما',
             gym_address: settings.gym_address || '',
             gym_phone: settings.gym_phone || ''
         };
@@ -280,7 +280,9 @@ function capturePreviewCard() {
     var card = document.querySelector('.professional-card');
     if (!card) return Promise.reject(new Error('ابتدا یک کارت را آماده کنید'));
     if (typeof html2canvas === 'undefined') return Promise.reject(new Error('ابزار تولید تصویر کارت بارگذاری نشده است'));
-    return html2canvas(card, { scale: 5, backgroundColor: '#f8f7f2', useCORS: true, logging: false }).then(function(canvas) {
+    // CR80 card printing needs enough source pixels for the printer's native
+    // resolution.  Eight times the preview size preserves QR modules clearly.
+    return html2canvas(card, { scale: 8, backgroundColor: '#f8f7f2', useCORS: true, logging: false }).then(function(canvas) {
         return { base64: canvas.toDataURL('image/png').split(',')[1], width: canvas.width, height: canvas.height };
     });
 }
@@ -291,6 +293,7 @@ function saveCardAsImage() {
     capturePreviewCard().then(function(image) {
         return getBridge().save_rendered_card(image.base64, code, type);
     }).then(function(result) {
+        if (result && result.cancelled) return;
         if (!result || !result.success) throw new Error((result && result.message) || 'ذخیره کارت انجام نشد');
         showToast('کارت ذخیره شد', 'PNG با کیفیت چاپ (' + result.width + '×' + result.height + ') ذخیره شد: ' + result.path);
     })['catch'](function(error) {

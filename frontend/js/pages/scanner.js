@@ -53,7 +53,7 @@ function verifyByCode() {
     verifyQR();
 }
 
-// ─── IMAGE SCANNER ──────────────────────────────────────────
+// ─── IMAGE SCANNER     
 function uploadCardImage() {
     var fileInput = document.getElementById('cardImageUpload');
     var file = fileInput.files[0];

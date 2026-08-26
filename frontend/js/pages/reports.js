@@ -6,6 +6,8 @@
 function generateReport() {
     var reportSelect = document.getElementById('reportType');
     if (reportSelect && !reportSelect.querySelector('option[value="expenses"]')) reportSelect.insertAdjacentHTML('beforeend', '<option value="expenses">گزارش هزینه‌ها</option>');
+    if (reportSelect && !reportSelect.querySelector('option[value="income"]')) reportSelect.insertAdjacentHTML('beforeend', '<option value="income">گزارش درآمد</option>');
+    ensureReportPeriodFilters();
     var type = reportSelect.value;
     var bridge = getBridge();
     var thead = document.getElementById('reportHead');
@@ -15,14 +17,25 @@ function generateReport() {
     if (thead) thead.innerHTML = '';
     if (tbody) tbody.innerHTML = '<tr><td><div class="reports-empty"><span><i class="fas fa-spinner fa-spin"></i></span><strong>در حال تولید گزارش</strong><p>داده‌های جدید در حال آماده‌سازی هستند.</p></div></td></tr>';
     
-    bridge.get_report_data(type).then(function(data) {
+    bridge.get_report_data(type === 'income' ? 'payments' : type).then(function(data) {
+        var year = document.getElementById('reportSolarYear').value;
+        var month = document.getElementById('reportSolarMonth').value;
+        if ((type === 'income' || type === 'expenses') && (year || month)) {
+            var dateKey = type === 'income' ? 'payment_date' : 'expense_date';
+            data = data.filter(function(item) { var date = afghanDate(item[dateKey] || ''); return (!year || date.slice(0, 4) === year) && (!month || date.slice(5, 7) === month); });
+        }
         var headers = [];
         var rows = [];
         
         if (data.length > 0) {
             headers = Object.keys(data[0]);
+            var dateColumns = ['date_of_birth', 'join_date', 'expiry_date', 'hire_date', 'payment_date', 'expense_date', 'check_in', 'check_out', 'created_at'];
             rows = data.map(function(item) {
-                return headers.map(function(h) { return item[h] === null || item[h] === undefined || item[h] === '' ? '-' : item[h]; });
+                return headers.map(function(h) {
+                    var value = item[h];
+                    if (value === null || value === undefined || value === '') return '-';
+                    return dateColumns.indexOf(h) !== -1 ? afghanDate(value) + String(value).slice(10) : value;
+                });
             });
         }
         
@@ -43,8 +56,8 @@ function generateReport() {
             'trainer_code': 'کد مربی', 'specialization': 'تخصص',
             'staff_code': 'کد کارمند', 'position': 'سمت',
             'amount': 'مبلغ', 'payment_method': 'روش پرداخت',
-            'payment_date': 'تاریخ پرداخت', 'join_date': 'تاریخ عضویت',
-            'hire_date': 'تاریخ استخدام', 'salary': 'حقوق',
+            'payment_date': 'تاریخ پرداخت', 'expense_date': 'تاریخ هزینه', 'join_date': 'تاریخ عضویت',
+            'hire_date': 'تاریخ استخدام', 'check_in': 'زمان ورود', 'check_out': 'زمان خروج', 'salary': 'حقوق', 'total_paid': 'مجموع پرداختی (AFN)',
             'category': 'دسته', 'quantity': 'تعداد', 'location': 'محل'
         };
         
@@ -74,6 +87,15 @@ function generateReport() {
     });
 }
 
+function ensureReportPeriodFilters() {
+    var controls = document.querySelector('.reports-control-panel__actions');
+    if (!controls || document.getElementById('reportSolarYear')) return;
+    var now = afghanDate(new Date().toISOString()).split('/');
+    var years = []; for (var year = Number(now[0]); year >= Number(now[0]) - 5; year--) years.push('<option value="' + year + '">' + year + '</option>');
+    var months = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+    controls.insertAdjacentHTML('afterbegin', '<div class="reports-select-wrap"><label class="form-label" for="reportSolarYear">سال شمسی</label><select class="form-control-gold" id="reportSolarYear" onchange="generateReport()">' + years.join('') + '</select></div><div class="reports-select-wrap"><label class="form-label" for="reportSolarMonth">ماه</label><select class="form-control-gold" id="reportSolarMonth" onchange="generateReport()"><option value="">همه ماه‌ها</option>' + months.map(function(name, index) { return '<option value="' + String(index + 1).padStart(2, '0') + '">' + name + '</option>'; }).join('') + '</select></div>');
+}
+
 function getReportMeta(type) {
     var reports = {
         members: { title: 'گزارش اعضا', description: 'نمای کلی از اطلاعات ثبت‌شده اعضای باشگاه' },
@@ -85,6 +107,7 @@ function getReportMeta(type) {
         expiring: { title: 'گزارش عضویت‌های در آستانه انقضا', description: 'اعضایی که نیاز به پیگیری و تمدید دارند' }
     };
     reports.expenses = { title: 'گزارش هزینه‌ها', description: 'فهرست هزینه‌های ثبت‌شده و دسته‌بندی‌های آن‌ها' };
+    reports.income = { title: 'گزارش درآمد', description: 'پرداخت‌ها و درآمد باشگاه در بازه شمسی انتخاب‌شده' };
     return reports[type] || reports.members;
 }
 
@@ -107,11 +130,10 @@ function exportReportCSV() {
         return;
     }
     
-    var type = document.getElementById('reportType').value;
-    getBridge().save_report_csv(type).then(function(result) {
+    var csv = [window._reportData.headers].concat(window._reportData.rows).map(function(row) { return row.map(function(value) { return '"' + String(value).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+    getBridge().save_report_csv_data(csv, 'gym_report_solar_hijri.csv').then(function(result) {
+        if (result && result.cancelled) return;
         if (!result || !result.success) throw new Error((result && result.message) || 'ذخیره فایل انجام نشد');
         showToast('موفق', 'فایل CSV ذخیره شد: ' + result.path);
-    })['catch'](function(error) {
-        showToast('خطا', 'خروجی CSV انجام نشد: ' + error.message, 'error');
-    });
+    })['catch'](function(error) { showToast('خطا', 'خروجی CSV انجام نشد: ' + error.message, 'error'); });
 }

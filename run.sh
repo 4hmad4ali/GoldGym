@@ -6,11 +6,11 @@ export PYTHONIOENCODING=utf-8
 export PYTHONUTF8=1
 
 echo ""
-echo "  ============================================================"
+echo "        "
 echo "    🏋 Golden Gym — v4.0"
 echo "    Professional Gym Management System"
 echo "    Pure Desktop — No Web Server"
-echo "  ============================================================"
+echo "        "
 echo ""
 
 if ! command -v python3 &>/dev/null; then

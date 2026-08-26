@@ -131,7 +131,7 @@ function saveTrainer() {
         specialization: getTeamFormControl('trainer-form', 'tSpecialization').value,
         status: getTeamFormControl('trainer-form', 'tStatus').value,
         salary: parseFloat(getTeamFormControl('trainer-form', 'tSalary').value) || 0,
-        hire_date: getTeamFormControl('trainer-form', 'tHireDate').value,
+        hire_date: getTeamFormControl('trainer-form', 'tHireDateIso').value,
         notes: getTeamFormControl('trainer-form', 'tNotes').value,
         photo_base64: getTeamFormControl('trainer-form', 'tPhoto').dataset.photoBase64 || ''
     };
@@ -223,7 +223,7 @@ function saveStaff() {
         position: getTeamFormControl('staff-form', 'sPosition').value,
         status: getTeamFormControl('staff-form', 'sStatus').value,
         salary: parseFloat(getTeamFormControl('staff-form', 'sSalary').value) || 0,
-        hire_date: getTeamFormControl('staff-form', 'sHireDate').value,
+        hire_date: getTeamFormControl('staff-form', 'sHireDateIso').value,
         notes: getTeamFormControl('staff-form', 'sNotes').value,
         photo_base64: getTeamFormControl('staff-form', 'sPhoto').dataset.photoBase64 || ''
     };
@@ -318,13 +318,16 @@ function openTrainerModal(data) {
             getTeamFormControl('trainer-form', 'tSpecialization').value = data.specialization || '';
             getTeamFormControl('trainer-form', 'tStatus').value = data.status || 'Active';
             getTeamFormControl('trainer-form', 'tSalary').value = data.salary || '';
-            getTeamFormControl('trainer-form', 'tHireDate').value = data.hire_date || '';
+            getTeamFormControl('trainer-form', 'tHireDate').value = afghanDate(data.hire_date || '');
+            getTeamFormControl('trainer-form', 'tHireDateIso').value = data.hire_date || '';
             getTeamFormControl('trainer-form', 'tNotes').value = data.notes || '';
             getBridge().get_person_photo(data.trainer_code, 'trainer').then(function(photo) {
                 if (photo) setPersonPhotoPreview('tPhotoPreview', photo);
             });
         } else {
-            getTeamFormControl('trainer-form', 'tHireDate').value = new Date().toISOString().split('T')[0];
+            var trainerHireDate = new Date().toISOString().split('T')[0];
+            getTeamFormControl('trainer-form', 'tHireDate').value = afghanDate(trainerHireDate);
+            getTeamFormControl('trainer-form', 'tHireDateIso').value = trainerHireDate;
         }
     });
 }
@@ -348,13 +351,16 @@ function openStaffModal(data) {
             getTeamFormControl('staff-form', 'sPosition').value = data.position || '';
             getTeamFormControl('staff-form', 'sStatus').value = data.status || 'Active';
             getTeamFormControl('staff-form', 'sSalary').value = data.salary || '';
-            getTeamFormControl('staff-form', 'sHireDate').value = data.hire_date || '';
+            getTeamFormControl('staff-form', 'sHireDate').value = afghanDate(data.hire_date || '');
+            getTeamFormControl('staff-form', 'sHireDateIso').value = data.hire_date || '';
             getTeamFormControl('staff-form', 'sNotes').value = data.notes || '';
             getBridge().get_person_photo(data.staff_code, 'staff').then(function(photo) {
                 if (photo) setPersonPhotoPreview('sPhotoPreview', photo);
             });
         } else {
-            getTeamFormControl('staff-form', 'sHireDate').value = new Date().toISOString().split('T')[0];
+            var staffHireDate = new Date().toISOString().split('T')[0];
+            getTeamFormControl('staff-form', 'sHireDate').value = afghanDate(staffHireDate);
+            getTeamFormControl('staff-form', 'sHireDateIso').value = staffHireDate;
         }
     });
 }

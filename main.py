@@ -38,7 +38,9 @@ except:
     except:
         pass
 
-APP_NAME = "🏋 Golden Gym — جیم گلدن"
+# Keep the executable neutral.  The client-selected gym name is displayed by
+# the UI after its settings are loaded.
+APP_NAME = "🏋 Gym Management System"
 APP_WIDTH = 1400
 APP_HEIGHT = 900
 MIN_WIDTH = 1100
@@ -48,6 +50,7 @@ class GoldenGymApp:
     def __init__(self):
         db.init_db()
         self.bridge = GoldenGymBridge()
+        self.bridge.start_backup_scheduler()
         self.frontend_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), 
             "frontend", 
@@ -60,7 +63,7 @@ class GoldenGymApp:
     def run(self):
         print("")
         print("  ╔══════════════════════════════════════════════════════════════════╗")
-        print("  ║   🏋 Golden Gym —  v4.0                                           ║")
+        print("  ║   🏋 Gym Management System — v4.0                                ║")
         print("  ║   Professional Gym Management System — Desktop Application       ║")
         print("  ╚══════════════════════════════════════════════════════════════════╝")
         print("")

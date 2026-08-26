@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏋 جیم گلدن — Golden Gym v4.0</title>
+    <title>🏋 سیستم مدیریت باشگاه</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +24,8 @@
     </script>
     
     <link rel="stylesheet" href="css/app.css">
+    <link rel="stylesheet" href="vendor/jalalidatepicker.min.css">
+    <script src="js/afghan-calendar.js"></script>
     <script id="cardPrintStyles" type="text/plain">
         @page { size: 85.6mm 54mm; margin: 0; }
         * { box-sizing: border-box; }
@@ -48,6 +50,7 @@
         .professional-card__person code { color: #9b7100; font-family: Consolas, monospace; font-size: 1.65mm; font-weight: 700; }
         .professional-card__qr { display: grid; justify-items: center; gap: .7mm; color: #7b8491; font-size: 1.25mm; text-align: center; }
         .professional-card__qr img, .professional-card__qr > i { width: 12.5mm; height: 12.5mm; padding: .6mm; border: .35mm solid #d7dce3; border-radius: 1.5mm; background: #fff; object-fit: contain; }
+        .professional-card__qr img { image-rendering: pixelated; }
         .professional-card__qr > i { display: grid; place-items: center; color: #17243a; font-size: 7mm; }
         .professional-card__details { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1mm; margin-top: 2.2mm; padding: 1.6mm 0; border-top: .25mm solid #dfe2e5; border-bottom: .25mm solid #dfe2e5; }
         .professional-card__details span, .professional-card__details strong { display: block; }
@@ -69,7 +72,7 @@
     <div class="login-card">
         <div class="login-header">
             <i class="fas fa-dumbbell gym-icon"></i>
-            <h1 class="gym-title">جیم گلدن</h1>
+            <h1 class="gym-title" data-gym-name>باشگاه شما</h1>
             <p class="gym-subtitle">سیستم مدیریت حرفه‌ای باشگاه</p>
             <span class="gym-version"><i class="fas fa-code-branch"></i> نسخه ۴.۰</span>
         </div>
@@ -101,7 +104,7 @@
         <nav class="sidebar">
             <div class="sidebar-brand">
                 <div class="sidebar-brand__mark"><i class="fas fa-dumbbell"></i></div>
-                <div class="sidebar-brand__copy"><div class="sidebar-brand__name">جیم گلدن</div><div class="sidebar-brand__caption">GYM MANAGEMENT</div></div>
+                <div class="sidebar-brand__copy"><div class="sidebar-brand__name" data-gym-name>باشگاه شما</div><div class="sidebar-brand__caption">GYM MANAGEMENT</div></div>
             </div>
             <button class="sidebar-primary-action" type="button" onclick="openNewMemberFromSidebar()"><i class="fas fa-user-plus"></i><span>عضو جدید</span></button>
 
@@ -175,7 +178,7 @@
                                     <option value="O+">O+</option><option value="O-">O-</option>
                                 </select>
                             </div>
-                            <div class="col-md-4"><label class="form-label">تاریخ تولد</label><input type="date" class="form-control-gold" id="mDob"></div>
+                            <div class="col-md-4"><label class="form-label">تاریخ تولد</label><input type="text" class="form-control-gold afghan-date-input" id="mDob" placeholder="۱۴۰۵/۰۶/۰۴" inputmode="numeric"></div>
                             <div class="col-md-4"><label class="form-label">طرح عضویت</label>
                                 <select class="form-control-gold" id="mPlan">
                                     <option value="روزانه">روزانه</option><option value="هفتگی">هفتگی</option>
@@ -184,7 +187,7 @@
                                     <option value="VIP سالانه">VIP سالانه</option>
                                 </select>
                             </div>
-                            <div class="col-md-6"><label class="form-label">تاریخ انقضا</label><input type="date" class="form-control-gold" id="mExpiry"></div>
+                            <div class="col-md-6"><label class="form-label">تاریخ انقضا</label><input type="text" class="form-control-gold afghan-date-input" id="mExpiry" placeholder="۱۴۰۵/۰۶/۰۴" inputmode="numeric"></div>
                             <div class="col-md-6"><label class="form-label">وضعیت</label>
                                 <select class="form-control-gold" id="mStatus">
                                     <option value="Active">فعال</option><option value="Expired">منقضی</option><option value="Inactive">غیرفعال</option>
@@ -224,7 +227,7 @@
                                 <option value="نقدی">نقدی</option><option value="کارت بانکی">کارت بانکی</option><option value="انتقال بانکی">انتقال بانکی</option>
                             </select>
                         </div>
-                        <div class="mb-3"><label class="form-label">تاریخ</label><input type="date" class="form-control-gold" id="pDate"></div>
+                        <div class="mb-3"><label class="form-label">تاریخ</label><input type="text" class="form-control-gold afghan-date-input" id="pDate" placeholder="۱۴۰۵/۰۶/۰۴" inputmode="numeric"></div>
                         <div class="mb-3"><label class="form-label">یادداشت</label><textarea class="form-control-gold" id="pNotes" rows="2"></textarea></div>
                     </form>
                 </div>
@@ -258,7 +261,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6"><label class="form-label">حقوق (AFN)</label><input type="number" class="form-control-gold" id="tSalary"></div>
-                            <div class="col-md-6"><label class="form-label">تاریخ استخدام</label><input type="date" class="form-control-gold" id="tHireDate"></div>
+                            <div class="col-md-6"><label class="form-label">تاریخ استخدام</label><input type="text" class="form-control-gold afghan-date-input" id="tHireDate" placeholder="۱۴۰۵/۰۶/۰۴" inputmode="numeric"></div>
                             <div class="col-12"><label class="form-label">یادداشت</label><textarea class="form-control-gold" id="tNotes" rows="2"></textarea></div>
                         </div>
                     </form>
@@ -293,7 +296,7 @@
                                 </select>
                             </div>
                             <div class="col-md-6"><label class="form-label">حقوق (AFN)</label><input type="number" class="form-control-gold" id="sSalary"></div>
-                            <div class="col-md-6"><label class="form-label">تاریخ استخدام</label><input type="date" class="form-control-gold" id="sHireDate"></div>
+                            <div class="col-md-6"><label class="form-label">تاریخ استخدام</label><input type="text" class="form-control-gold afghan-date-input" id="sHireDate" placeholder="۱۴۰۵/۰۶/۰۴" inputmode="numeric"></div>
                             <div class="col-12"><label class="form-label">یادداشت</label><textarea class="form-control-gold" id="sNotes" rows="2"></textarea></div>
                         </div>
                     </form>
@@ -362,10 +365,31 @@
         </div>
     </div>
 
+    <!-- Backup restore confirmation -->
+    <div class="modal fade backup-restore-modal" id="backupRestoreModal" tabindex="-1" aria-labelledby="backupRestoreTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <span class="backup-restore-modal__icon"><i class="fas fa-database"></i></span>
+                    <span class="backup-restore-modal__eyebrow">BACKUP RESTORE</span>
+                    <h5 id="backupRestoreTitle">Restore this backup?</h5>
+                    <p id="backupRestoreMessage">Your current gym records and uploaded images will be replaced with the selected backup.</p>
+                    <div class="backup-restore-modal__file"><i class="fas fa-file-zipper"></i><span id="backupRestoreFilename"></span></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="backup-restore-modal__cancel" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <button class="backup-restore-modal__confirm" type="button" id="backupRestoreAction"><i class="fas fa-rotate-left"></i> Restore backup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="toast-container"></div>
 
     <!-- ─── SCRIPTS ─── -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="vendor/jalalidatepicker.min.js"></script>
+    <script src="js/afghan-calendar.js"></script>
     <script src="js/app.js"></script>
     <script src="js/pages/dashboard.js"></script>
     <script src="js/pages/members.js"></script>

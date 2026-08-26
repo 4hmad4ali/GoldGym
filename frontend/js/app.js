@@ -3,7 +3,7 @@
  * جیم گلدن — سیستم مدیریت حرفه‌ای باشگاه
  */
 
-// ── Theme system ──────────────────────────────────────────────
+// ── Theme system     ────
 // Theme tokens live in index.html. All future pages should use the --gg-* tokens
 // rather than hard-coded colours so they inherit both themes automatically.
 var ThemeManager = {
@@ -67,7 +67,7 @@ function setThemePreference(theme, persist) {
     ThemeManager.setPreference(theme, persist !== false);
 }
 
-// ── Global State ──────────────────────────────────────────────
+// ── Global State     ────
 var App = {
     currentPage: 'dashboard',
     user: null,
@@ -84,7 +84,7 @@ var App = {
         equipment: [],
         notifications: [],
         settings: {
-            gymName: 'جیم گلدن',
+            gym_name: 'باشگاه شما',
             address: 'کابل، افغانستان',
             phone: '+93 700 000 000',
             email: 'info@goldengym.af',
@@ -120,6 +120,27 @@ function getBridge() {
         App.bridge = promisifyBridge(createMockBridge());
     }
     return App.bridge;
+}
+
+// Apply the customer-owned gym name everywhere that represents the product.
+// A neutral fallback is intentional: every installation can be branded by its
+// owner without exposing the developer's product name to its members.
+function applyGymBrand(settings) {
+    var gymName = (settings && settings.gym_name ? String(settings.gym_name) : '').trim() || 'باشگاه شما';
+    App.data.settings.gym_name = gymName;
+    var targets = document.querySelectorAll('[data-gym-name]');
+    for (var i = 0; i < targets.length; i++) targets[i].textContent = gymName;
+    document.title = '🏋 ' + gymName + ' — سیستم مدیریت باشگاه';
+}
+
+function loadGymBrand() {
+    return getBridge().get_settings().then(function(settings) {
+        applyGymBrand(settings || {});
+        return settings;
+    })['catch'](function(error) {
+        console.warn('Unable to load gym name:', error);
+        applyGymBrand({});
+    });
 }
 
 // The event fires after pywebview injects the Python API. This is important
@@ -170,7 +191,7 @@ function mockEnrichAttendance(a) {
     return enriched;
 }
 
-// ── Mock Bridge ──────────────────────────────────────────────
+// ── Mock Bridge     ────
 function createMockBridge() {
     return {
         login: function(username, password) {
@@ -185,6 +206,9 @@ function createMockBridge() {
         save_settings: function(settings) { 
             App.data.settings = { ...App.data.settings, ...settings };
             return { success: true };
+        },
+        save_backup: function() {
+            return { success: false, message: 'Backups are available in the desktop app.' };
         },
         get_gym_logo: function() { return App.data.settings.logo || null; },
         get_gym_signature: function() { return App.data.settings.signature || null; },
@@ -640,7 +664,7 @@ function createMockBridge() {
     };
 }
 
-// ─── HANDLE LOGIN ──────────────────────────────────────────────
+// ─── HANDLE LOGIN     ────
 function handleLogin(e) {
     if (e) e.preventDefault();
     
@@ -665,10 +689,12 @@ function handleLogin(e) {
             var mainApp = document.getElementById('mainApp');
             if (loginScreen) loginScreen.style.display = 'none';
             if (mainApp) mainApp.classList.add('show');
+            loadGymBrand();
             var userNameDisplay = document.getElementById('userNameDisplay');
             if (userNameDisplay) userNameDisplay.textContent = result.user.full_name || 'مدیر سیستم';
             navigate('dashboard').then(function() {
                 updateAll();
+                startBackupScheduleNotifications();
             });
         } else {
             if (errorEl) {
@@ -682,6 +708,32 @@ function handleLogin(e) {
             errorEl.style.display = 'block';
         }
     });
+}
+
+var lastBackupScheduleEvent = '';
+var backupScheduleNotificationTimer = null;
+
+function checkBackupScheduleNotification() {
+    if (!App.isLoggedIn) return;
+    getBridge().get_backup_schedule_status().then(function(status) {
+        var event = status && status.last_event;
+        if (!event || !event.timestamp || event.timestamp === lastBackupScheduleEvent) return;
+        lastBackupScheduleEvent = event.timestamp;
+        if (event.status === 'success') {
+            showToast('پشتیبان‌گیری انجام شد', 'نسخه خودکار با نام ' + (event.filename || 'backup.zip') + ' ذخیره شد.');
+        } else if (event.status === 'error') {
+            showToast('پشتیبان‌گیری ناموفق بود', 'لطفاً از بخش تنظیمات پشتیبان دستی بگیرید.', 'error');
+        } else if (event.status === 'reminder') {
+            showToast('یادآوری پشتیبان‌گیری', 'لطفاً از بخش تنظیمات یک نسخه پشتیبان دستی تهیه کنید.');
+        }
+        if (typeof updateNotificationBadge === 'function') updateNotificationBadge();
+    })['catch'](function() {});
+}
+
+function startBackupScheduleNotifications() {
+    if (backupScheduleNotificationTimer) return;
+    checkBackupScheduleNotification();
+    backupScheduleNotificationTimer = setInterval(checkBackupScheduleNotification, 20000);
 }
 
 function handleLogout() {
@@ -708,6 +760,21 @@ function loadPageTemplate(page) {
     App.loadedPages[page] = getBridge().get_page_template(page).then(function(template) {
         if (!template) throw new Error('Page template not found: ' + page);
         mainContent.insertAdjacentHTML('beforeend', template);
+        var solarFields = { 'pDate': 'pDateIso', 'expenseDate': 'expenseDateIso' };
+        Object.keys(solarFields).forEach(function(id) {
+            var field = document.getElementById(id);
+            if (!field || field.dataset.jdp) return;
+            var original = field.value;
+            field.type = 'text'; field.readOnly = true; field.placeholder = '۱۴۰۵/۰۶/۰۴';
+            field.setAttribute('data-jdp', '');
+            field.setAttribute('data-jdp-target-value-input', '#' + solarFields[id]);
+            field.setAttribute('data-jdp-target-value-type', 'gregorian');
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden'; hidden.id = solarFields[id]; hidden.value = original;
+            field.insertAdjacentElement('afterend', hidden);
+        });
+        if (window.jalaliDatepicker) jalaliDatepicker.startWatch({ persianDigits: true, targetValueInput: 'attr', targetValueType: 'attr', zIndex: 3000 });
+        applyGymBrand(App.data.settings);
         var loadingState = document.getElementById('pageLoading');
         if (loadingState) loadingState.style.display = 'none';
     })['catch'](function(error) {
@@ -786,7 +853,7 @@ function showToast(title, message, type) {
     }, 3000);
 }
 
-// ─── UPDATE ALL ────────────────────────────────────────────────
+// ─── UPDATE ALL     ──────
 function updateAll() {
     // Seed sample data if empty
     if (App.data.members.length === 0) {
@@ -866,7 +933,7 @@ function seedSampleData() {
     App.nextIds.equipment = 3;
 }
 
-// ─── INIT ──────────────────────────────────────────────────────
+// ─── INIT     ────────────
 function setPersonPhotoPreview(previewId, base64Image) {
     var preview = document.getElementById(previewId);
     if (!preview) return;
@@ -902,8 +969,10 @@ function preparePersonPhoto(input, previewId) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.jalaliDatepicker) jalaliDatepicker.startWatch({ persianDigits: true, targetValueInput: 'attr', targetValueType: 'attr', zIndex: 3000 });
     console.log('🏋 Golden Gym v4.0 loaded successfully');
     ThemeManager.load();
+    loadGymBrand();
 
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(function() {

@@ -35,7 +35,7 @@ function renderPayments() {
                 '<td><div class="payment-member"><span class="payment-member__avatar">' + paymentInitials(p.visitor_name || p.member_name || p.member_code || 'ع') + '</span><strong>' + memberName + (isDailyPayment ? '<small class="payment-daily-tag">روزانه</small>' : '') + '</strong></div></td>' +
                 '<td><span class="payment-amount">' + Number(p.amount || 0).toLocaleString() + '<small>AFN</small></span></td>' +
                 '<td><span class="payment-method"><i class="fas fa-credit-card"></i>' + method + '</span></td>' +
-                '<td><span class="payment-date"><i class="far fa-calendar"></i>' + escapePaymentText(p.payment_date || '-') + '</span></td>' +
+                '<td><span class="payment-date"><i class="far fa-calendar"></i>' + escapePaymentText(afghanDate(p.payment_date || '') || '-') + '</span></td>' +
                 '<td><div class="payment-row-actions"><button class="payment-row-action is-primary" type="button" title="ویرایش پرداخت" onclick="editPayment(' + p.id + ')"><i class="fas fa-pen"></i></button><button class="payment-row-action is-danger" type="button" title="حذف پرداخت" onclick="deletePayment(' + p.id + ')"><i class="fas fa-trash"></i></button></div></td>' +
             '</tr>';
         }).join('');
@@ -106,7 +106,7 @@ function savePayment() {
     var visitorName = getPaymentFormControl('pDailyVisitor').value.trim();
     var amount = parseFloat(getPaymentFormControl('pAmount').value);
     var method = getPaymentFormControl('pMethod').value;
-    var date = getPaymentFormControl('pDate').value;
+    var date = getPaymentFormControl('pDateIso').value;
     var notes = getPaymentFormControl('pNotes').value;
     
     if ((!memberId && paymentType !== 'daily') || !amount) {
@@ -197,10 +197,13 @@ function openPaymentModal(data) {
                 getPaymentFormControl('pDailyVisitor').value = data.visitor_name || '';
                 getPaymentFormControl('pAmount').value = data.amount || '';
                 getPaymentFormControl('pMethod').value = data.payment_method || 'نقدی';
-                getPaymentFormControl('pDate').value = data.payment_date || '';
+                getPaymentFormControl('pDate').value = afghanDate(data.payment_date || '');
+                getPaymentFormControl('pDateIso').value = data.payment_date || '';
                 getPaymentFormControl('pNotes').value = data.notes || '';
             } else {
-                getPaymentFormControl('pDate').value = new Date().toISOString().split('T')[0];
+                var paymentDate = new Date().toISOString().split('T')[0];
+                getPaymentFormControl('pDate').value = afghanDate(paymentDate);
+                getPaymentFormControl('pDateIso').value = paymentDate;
             }
             togglePaymentPersonFields();
         });
