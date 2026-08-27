@@ -26,6 +26,12 @@ assets/signature.png
 *.temp
 *.bak
 
+# Windows packaging output
+build/
+dist/
+release/
+*.spec
+
 # Editor and operating-system files
 .vscode/
 .idea/

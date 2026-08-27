@@ -48,8 +48,9 @@
                     <div><label class="form-label" for="currentPassword">رمز عبور فعلی</label><input type="password" class="form-control-gold" id="currentPassword" placeholder="رمز فعلی"></div>
                     <div><label class="form-label" for="newPassword">رمز عبور جدید</label><input type="password" class="form-control-gold" id="newPassword" placeholder="حداقل ۶ کاراکتر"></div>
                     <div><label class="form-label" for="confirmPassword">تکرار رمز جدید</label><input type="password" class="form-control-gold" id="confirmPassword" placeholder="رمز جدید را تکرار کنید"></div>
-                    <button class="btn-outline-gold" onclick="changePassword()"><i class="fas fa-key"></i> تغییر رمز عبور</button>
+                    <button class="settings-action settings-action--neutral" type="button" onclick="changePassword()"><span class="settings-action__icon"><i class="fas fa-key"></i></span><span>تغییر رمز عبور</span></button>
                 </div>
+                <div class="settings-recovery-key"><div><strong>کلید بازیابی آفلاین</strong><p>یک کلید یک‌بارمصرف بسازید و آن را خارج از این دستگاه نگهداری کنید. ساخت کلید جدید، کلید قبلی را باطل می‌کند.</p></div><button class="settings-action settings-action--secure" type="button" onclick="createPasswordRecoveryKey()"><span class="settings-action__icon"><i class="fas fa-shield-halved"></i></span><span>ایجاد کلید بازیابی</span></button><div id="recoveryKeyResult" class="settings-recovery-key__result" hidden></div></div>
             </section>
 
             <section class="settings-card" id="settingsBrand">
@@ -62,12 +63,12 @@
             <section class="settings-card" id="settingsBackupClean">
                 <div class="settings-card__heading"><span class="settings-card__icon"><i class="fas fa-database"></i></span><div><h3>بازیابی و پشتیبان‌گیری</h3><p>دانلود پشتیبان گیری و بازیابی داده ها</p></div></div>
                 <div class="settings-backup-grid">
-                    <button class="btn-gold" type="button" onclick="downloadBackup()"><i class="fas fa-download"></i> دانلود پشتیبان</button>
-                    <label class="btn-outline-gold settings-backup-upload"><i class="fas fa-upload"></i> آپلود و بازیابی<input type="file" accept=".zip,application/zip" onchange="restoreBackup(this)"></label>
+                    <button class="settings-action settings-action--primary" type="button" onclick="downloadBackup()"><span class="settings-action__icon"><i class="fas fa-download"></i></span><span>دانلود پشتیبان</span></button>
+                    <label class="settings-action settings-action--restore settings-backup-upload"><span class="settings-action__icon"><i class="fas fa-upload"></i></span><span>آپلود و بازیابی</span><input type="file" accept=".zip,application/zip" onchange="restoreBackup(this)"></label>
                 </div>
                 <div class="settings-backup-grid" style="margin-top: 14px;">
                     <label class="settings-backup-upload"><input type="checkbox" id="backupScheduleEnabled" checked> پشتیبان‌گیری خودکار هر شب ساعت ۹</label>
-                    <button class="btn-outline-gold" type="button" onclick="chooseBackupDirectory()"><i class="fas fa-folder-open"></i> انتخاب محل ذخیره</button>
+                    <button class="settings-action settings-action--neutral" type="button" onclick="chooseBackupDirectory()"><span class="settings-action__icon"><i class="fas fa-folder-open"></i></span><span>انتخاب محل ذخیره</span></button>
                     <small class="settings-backup-note" id="backupScheduleStatus"></small>
                 </div>
                 <small class="settings-backup-note"><i class="fas fa-circle-info"></i> بازیابی یک پشتیبان جایگزین کردن داده‌های فعلی و تصاویر آپلود شده می‌شود.</small>

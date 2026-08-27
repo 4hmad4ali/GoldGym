@@ -3,12 +3,15 @@ Golden Gym Desktop — Database Module
 """
 import sqlite3
 import hashlib
+import hmac
 import os
+import secrets
 from datetime import datetime, date, timedelta
 import json
 import csv
 from io import StringIO
 import sys
+from app_paths import DATABASE_PATH, initialise_user_data
 
 if sys.platform == 'win32':
     try:
@@ -18,7 +21,7 @@ if sys.platform == 'win32':
     except:
         pass
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "golden_gym.db")
+DB_PATH = DATABASE_PATH
 
 def get_conn():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -31,7 +34,24 @@ def get_conn():
 def hash_pw(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+RECOVERY_KEY_ITERATIONS = 200_000
+RECOVERY_MAX_ATTEMPTS = 5
+RECOVERY_LOCK_MINUTES = 15
+
+def _normalise_recovery_key(value):
+    return ''.join(str(value or '').upper().split()).replace('-', '')
+
+def _recovery_key_hash(recovery_key, salt):
+    return hashlib.pbkdf2_hmac(
+        'sha256', _normalise_recovery_key(recovery_key).encode('utf-8'), salt, RECOVERY_KEY_ITERATIONS
+    ).hex()
+
+def _new_recovery_key():
+    raw = secrets.token_hex(16).upper()
+    return '-'.join(raw[index:index + 4] for index in range(0, len(raw), 4))
+
 def init_db():
+    initialise_user_data()
     conn = get_conn()
     c = conn.cursor()
     
@@ -45,6 +65,16 @@ def init_db():
         language TEXT DEFAULT 'fa',
         created_at TEXT DEFAULT (datetime('now')),
         last_login TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS password_recovery (
+        user_id INTEGER PRIMARY KEY,
+        key_salt BLOB NOT NULL,
+        key_hash TEXT NOT NULL,
+        failed_attempts INTEGER NOT NULL DEFAULT 0,
+        locked_until TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
     
     CREATE TABLE IF NOT EXISTS membership_plans (
@@ -221,7 +251,7 @@ def init_db():
     if not c.fetchone():
         c.execute("INSERT INTO users (username, password_hash, full_name, role, language) VALUES (?, ?, ?, ?, ?)",
             ('admin', hash_pw('admin123'), 'مدیر سیستم', 'admin', 'fa'))
-        print("✅ Admin user created")
+        print("[Database] Admin user created")
     
     # Plans
     c.execute("SELECT COUNT(*) FROM membership_plans")
@@ -236,7 +266,7 @@ def init_db():
             ('VIP سالانه', 365, 40000, 'دسترسی VIP با مربی'),
         ]
         c.executemany("INSERT INTO membership_plans (plan_name, duration_days, price, description) VALUES (?, ?, ?, ?)", plans)
-        print("✅ Membership plans created")
+        print("[Database] Membership plans created")
     
     # Settings
     default_settings = [
@@ -262,7 +292,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print("✅ Database initialized successfully")
+    print("[Database] Initialized successfully")
 
 # ── AUTH     ────────────
 def login(username, password):
@@ -288,6 +318,73 @@ def change_password(username, new_password):
     conn.close()
     return True
 
+def create_password_recovery_key(username):
+    """Create one offline recovery key, replacing any earlier unused key."""
+    conn = get_conn()
+    user = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+    if not user:
+        conn.close()
+        return None
+    recovery_key = _new_recovery_key()
+    salt = secrets.token_bytes(16)
+    conn.execute("DELETE FROM password_recovery WHERE user_id=?", (user['id'],))
+    conn.execute(
+        "INSERT INTO password_recovery (user_id, key_salt, key_hash) VALUES (?, ?, ?)",
+        (user['id'], salt, _recovery_key_hash(recovery_key, salt))
+    )
+    conn.commit()
+    conn.close()
+    return recovery_key
+
+def reset_password_with_recovery_key(username, recovery_key, new_password):
+    """Reset a password using a one-time key; lock after repeated failures."""
+    if not isinstance(new_password, str) or len(new_password) < 8:
+        return {'success': False, 'message': 'رمز جدید باید حداقل ۸ کاراکتر باشد.'}
+    conn = get_conn()
+    row = conn.execute("""
+        SELECT u.id, r.key_salt, r.key_hash, r.failed_attempts, r.locked_until
+        FROM users u LEFT JOIN password_recovery r ON r.user_id = u.id
+        WHERE u.username=?
+    """, (username,)).fetchone()
+    generic_error = 'اطلاعات بازیابی درست نیست.'
+    if not row or row['key_hash'] is None:
+        conn.close()
+        return {'success': False, 'message': generic_error}
+
+    now = datetime.now()
+    locked_until = datetime.fromisoformat(row['locked_until']) if row['locked_until'] else None
+    if locked_until and now < locked_until:
+        remaining = max(1, int((locked_until - now).total_seconds() // 60) + 1)
+        conn.close()
+        return {'success': False, 'message': 'تلاش‌های بازیابی موقتاً قفل شده است. حدود {0} دقیقه دیگر دوباره امتحان کنید.'.format(remaining)}
+    if locked_until:
+        conn.execute("UPDATE password_recovery SET failed_attempts=0, locked_until=NULL WHERE user_id=?", (row['id'],))
+        attempts = 0
+    else:
+        attempts = row['failed_attempts']
+
+    valid = hmac.compare_digest(_recovery_key_hash(recovery_key, row['key_salt']), row['key_hash'])
+    if not valid:
+        attempts += 1
+        if attempts >= RECOVERY_MAX_ATTEMPTS:
+            lock_until = (now + timedelta(minutes=RECOVERY_LOCK_MINUTES)).isoformat(timespec='seconds')
+            conn.execute("UPDATE password_recovery SET failed_attempts=0, locked_until=? WHERE user_id=?", (lock_until, row['id']))
+            message = 'تلاش‌های بازیابی موقتاً قفل شد. ۱۵ دقیقه دیگر دوباره امتحان کنید.'
+        else:
+            conn.execute("UPDATE password_recovery SET failed_attempts=? WHERE user_id=?", (attempts, row['id']))
+            message = generic_error + ' {0} تلاش دیگر باقی مانده است.'.format(RECOVERY_MAX_ATTEMPTS - attempts)
+        conn.commit()
+        conn.close()
+        add_activity('password_recovery_failed', 'تلاش ناموفق بازیابی رمز', 'حساب: ' + str(username))
+        return {'success': False, 'message': message}
+
+    conn.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_pw(new_password), row['id']))
+    conn.execute("DELETE FROM password_recovery WHERE user_id=?", (row['id'],))
+    conn.commit()
+    conn.close()
+    add_activity('password_recovery_reset', 'رمز عبور با کلید بازیابی تنظیم شد', 'حساب: ' + str(username))
+    return {'success': True, 'message': 'رمز عبور تغییر کرد. کلید بازیابی مصرف شد.'}
+
 # ── SETTINGS     ────────
 def get_all_settings():
     conn = get_conn()
@@ -310,8 +407,8 @@ def get_members(search="", status="All", limit=500):
     q = "SELECT * FROM members WHERE 1=1"
     params = []
     if search:
-        q += " AND (full_name LIKE ? OR father_name LIKE ? OR member_code LIKE ? OR phone LIKE ?)"
-        params.extend([f"%{search}%"] * 4)
+        q += " AND (full_name LIKE ? OR father_name LIKE ? OR member_code LIKE ? OR phone LIKE ? OR CAST(id AS TEXT) LIKE ?)"
+        params.extend([f"%{search}%"] * 5)
     if status != "All":
         q += " AND status=?"
         params.append(status)

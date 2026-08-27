@@ -117,8 +117,28 @@
                 <button type="submit" class="btn-gold"><i class="fas fa-sign-in-alt"></i> ورود به سیستم</button>
                 <div id="loginError" style="display:none;"></div>
             </form>
+            <button type="button" class="login-recovery-link" onclick="showPasswordRecovery()"><i class="fas fa-key"></i> رمز عبور را فراموش کرده‌اید؟</button>
         </div>
         <div class="login-footer"><i class="fas fa-info-circle"></i> پیش‌فرض: <strong>admin</strong> / <strong>admin123</strong></div>
+    </div>
+</div>
+
+<!-- Offline password recovery -->
+<div id="recoveryScreen" style="display:none;">
+    <div class="login-card recovery-card">
+        <div class="login-header"><i class="fas fa-key gym-icon"></i><h1 class="gym-title">بازیابی رمز عبور</h1><p class="gym-subtitle">کلید بازیابی که قبلاً ذخیره کرده‌اید را وارد کنید.</p></div>
+        <div class="login-body">
+            <form id="recoveryForm" onsubmit="resetPasswordWithRecovery(event)">
+                <div class="mb-3"><label for="recoveryUsername" class="form-label">نام کاربری</label><input type="text" class="form-control-gold" id="recoveryUsername" value="admin" required autocomplete="username"></div>
+                <div class="mb-3"><label for="recoveryKey" class="form-label">کلید بازیابی</label><input type="text" class="form-control-gold" id="recoveryKey" placeholder="XXXX-XXXX-XXXX-XXXX" required autocomplete="off" dir="ltr"></div>
+                <div class="mb-3"><label for="recoveryNewPassword" class="form-label">رمز عبور جدید</label><input type="password" class="form-control-gold" id="recoveryNewPassword" placeholder="حداقل ۸ کاراکتر" required autocomplete="new-password"></div>
+                <div class="mb-3"><label for="recoveryConfirmPassword" class="form-label">تکرار رمز عبور جدید</label><input type="password" class="form-control-gold" id="recoveryConfirmPassword" required autocomplete="new-password"></div>
+                <button type="submit" class="btn-gold" id="recoverySubmit"><i class="fas fa-unlock-keyhole"></i> تنظیم رمز جدید</button>
+                <div id="recoveryError" class="login-recovery-error" style="display:none;"></div>
+            </form>
+            <button type="button" class="login-recovery-link" onclick="hidePasswordRecovery()"><i class="fas fa-arrow-right"></i> بازگشت به ورود</button>
+        </div>
+        <div class="login-footer">بعد از ۵ تلاش ناموفق، بازیابی برای ۱۵ دقیقه قفل می‌شود.</div>
     </div>
 </div>
 

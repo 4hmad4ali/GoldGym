@@ -13,14 +13,15 @@ import platform
 import secrets
 import sys
 from datetime import date, datetime
+from app_paths import user_data_path
 
 
 PRODUCT_ID = 'goldgym-desktop'
 PUBLIC_MODULUS = 129595685214518469558299037394441427444412646401003938001550195037211379521811011154734724465478615191746387195841141275467588585954066204969508456415765703183781481712715820380789036477755324469060378331570930748723758761638503291698202815371489837420095721908175671119178468876078828163560631785478442100499
 PUBLIC_EXPONENT = 65537
 _KEY_BYTES = (PUBLIC_MODULUS.bit_length() + 7) // 8
-_LICENSE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'user_data', 'license.json')
-_DEVICE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'user_data', 'device-id.txt')
+_LICENSE_FILE = user_data_path('user_data', 'license.json')
+_DEVICE_FILE = user_data_path('user_data', 'device-id.txt')
 
 
 def _urlsafe_encode(value):

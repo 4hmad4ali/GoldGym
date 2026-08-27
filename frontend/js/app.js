@@ -1,6 +1,6 @@
 /**
- * Golden Gym Desktop — Main Application v4.0
- * جیم گلدن — سیستم مدیریت حرفه‌ای باشگاه
+ *  Gym Desktop — Main Application v4.0
+ * جیم  — سیستم مدیریت حرفه‌ای باشگاه
  */
 
 // ── Theme system     ────
@@ -73,7 +73,6 @@ var App = {
     user: null,
     isLoggedIn: false,
     licenseValid: false,
-    license: null,
     bridge: null,
     data: {
         members: [],
@@ -115,7 +114,7 @@ function getBridge() {
     if (window.pywebview && window.pywebview.api) {
         if (App.bridge !== window.pywebview.api) {
             App.bridge = window.pywebview.api;
-            console.log('✅ Bridge connected via pywebview');
+            console.log(' Bridge connected via pywebview');
         }
     } else if (!App.bridge) {
         console.warn('⚠️ Bridge not available yet, using temporary mock mode');
@@ -208,6 +207,8 @@ function createMockBridge() {
         get_license_status: function() { return { valid: true, license_type: 'lifetime', message: 'Preview mode' }; },
         activate_license: function() { return { success: true }; },
         change_password: function(username, newPassword) { return { success: true }; },
+        create_password_recovery_key: function() { return { success: true, recovery_key: 'DEMO-RECOVERY-KEY-1234' }; },
+        reset_password_with_recovery_key: function() { return { success: true }; },
         get_settings: function() { return App.data.settings; },
         save_settings: function(settings) { 
             App.data.settings = { ...App.data.settings, ...settings };
@@ -720,6 +721,51 @@ function handleLogin(e) {
     });
 }
 
+function showPasswordRecovery() {
+    var login = document.getElementById('loginScreen');
+    var recovery = document.getElementById('recoveryScreen');
+    var error = document.getElementById('recoveryError');
+    if (login) login.style.display = 'none';
+    if (recovery) recovery.style.display = 'flex';
+    if (error) error.style.display = 'none';
+}
+
+function hidePasswordRecovery() {
+    var login = document.getElementById('loginScreen');
+    var recovery = document.getElementById('recoveryScreen');
+    if (recovery) recovery.style.display = 'none';
+    if (login) login.style.display = 'flex';
+}
+
+function resetPasswordWithRecovery(event) {
+    event.preventDefault();
+    var username = document.getElementById('recoveryUsername').value.trim();
+    var recoveryKey = document.getElementById('recoveryKey').value.trim();
+    var newPassword = document.getElementById('recoveryNewPassword').value;
+    var confirmation = document.getElementById('recoveryConfirmPassword').value;
+    var error = document.getElementById('recoveryError');
+    var submit = document.getElementById('recoverySubmit');
+    if (newPassword.length < 8 || newPassword !== confirmation) {
+        if (error) { error.textContent = newPassword.length < 8 ? 'رمز جدید باید حداقل ۸ کاراکتر باشد.' : 'رمزهای جدید مطابقت ندارند.'; error.style.display = 'block'; }
+        return;
+    }
+    if (error) error.style.display = 'none';
+    if (submit) submit.disabled = true;
+    getBridge().reset_password_with_recovery_key(username, recoveryKey, newPassword).then(function(result) {
+        if (result && result.success) {
+            document.getElementById('recoveryForm').reset();
+            hidePasswordRecovery();
+            showToast('موفق', result.message || 'رمز عبور تغییر کرد.');
+            return;
+        }
+        if (error) { error.textContent = (result && result.message) || 'بازیابی رمز انجام نشد.'; error.style.display = 'block'; }
+    })['catch'](function() {
+        if (error) { error.textContent = 'بازیابی رمز انجام نشد. دوباره تلاش کنید.'; error.style.display = 'block'; }
+    })['finally'](function() {
+        if (submit) submit.disabled = false;
+    });
+}
+
 var lastBackupScheduleEvent = '';
 var backupScheduleNotificationTimer = null;
 
@@ -809,15 +855,6 @@ function refreshPage(page) {
     if (page === 'reports' && typeof generateReport === 'function') generateReport();
     if (page === 'cards' && typeof updateCardPersonList === 'function') updateCardPersonList();
     if (page === 'settings' && typeof loadSettings === 'function') loadSettings();
-    if (page === 'about') updateLicenseStatusDisplay();
-}
-
-function updateLicenseStatusDisplay() {
-    var target = document.getElementById('licenseStatusDisplay');
-    if (!target || !App.license) return;
-    target.textContent = App.license.license_type === 'lifetime'
-        ? 'دائمی و فعال'
-        : 'فعال تا ' + (App.license.expiry_date || '—');
 }
 
 function openNewMemberFromSidebar() {
@@ -1089,7 +1126,6 @@ function initializeLicenseGate() {
         var device = values[1] && values[1].device_id;
         if (status.valid) {
             App.licenseValid = true;
-            App.license = status;
             var login = document.getElementById('loginScreen');
             var screen = document.getElementById('licenseScreen');
             if (screen) screen.style.display = 'none';
@@ -1121,7 +1157,6 @@ function activateOfflineLicense() {
     getBridge().activate_license(code).then(function(result) {
         if (result && result.success) {
             App.licenseValid = true;
-            App.license = result.license || { valid: true };
             var screen = document.getElementById('licenseScreen');
             var login = document.getElementById('loginScreen');
             if (screen) screen.style.display = 'none';

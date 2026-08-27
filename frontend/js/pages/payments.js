@@ -172,7 +172,7 @@ function togglePaymentPersonFields() {
     memberField.hidden = isDaily;
     visitorField.hidden = !isDaily;
     member.required = !isDaily;
-    if (isDaily) member.value = '';
+    if (isDaily) selectPaymentMember('');
 }
 
 function openPaymentModal(data) {
@@ -181,19 +181,16 @@ function openPaymentModal(data) {
         var form = document.getElementById('paymentPageForm');
         if (!form) return;
         form.reset();
-        var select = getPaymentFormControl('pMember');
         getPaymentFormControl('paymentEditId').value = '';
         document.getElementById('paymentFormTitle').textContent = data ? 'ویرایش پرداخت' : 'ثبت پرداخت جدید';
         document.getElementById('paymentFormKicker').textContent = data ? 'PAYMENT DETAILS' : 'PAYMENT REGISTER';
         document.getElementById('paymentFormSubtitle').textContent = data ? 'جزئیات این پرداخت را بررسی و تغییرات را ذخیره کنید.' : 'دریافتی عضو را ثبت کنید تا در گزارش‌های مالی باشگاه نمایش داده شود.';
         getBridge().get_members('', 'All').then(function(members) {
-            select.innerHTML = '<option value="">-- انتخاب عضو --</option>' + members.map(function(member) {
-                return '<option value="' + member.id + '">' + escapePaymentText(member.full_name) + ' (' + escapePaymentText(member.member_code) + ')</option>';
-            }).join('');
+            window.paymentFormMembers = members || [];
             if (data) {
                 getPaymentFormControl('paymentEditId').value = data.id;
                 getPaymentFormControl('pPaymentType').value = data.payment_type || 'member';
-                select.value = data.member_id || '';
+                selectPaymentMember(data.member_id || '');
                 getPaymentFormControl('pDailyVisitor').value = data.visitor_name || '';
                 getPaymentFormControl('pAmount').value = data.amount || '';
                 getPaymentFormControl('pMethod').value = data.payment_method || 'نقدی';
@@ -208,6 +205,57 @@ function openPaymentModal(data) {
             togglePaymentPersonFields();
         });
     });
+}
+
+function filterPaymentMembers(clearSelection) {
+    var search = getPaymentFormControl('pMemberSearch');
+    var results = getPaymentFormControl('pMemberResults');
+    if (!search || !results) return;
+    if (clearSelection) {
+        var selected = getPaymentFormControl('pMember');
+        var selectedLabel = getPaymentFormControl('pMemberSelected');
+        if (selected) selected.value = '';
+        if (selectedLabel) {
+            selectedLabel.textContent = '';
+            selectedLabel.hidden = true;
+        }
+    }
+    var query = search.value.trim().toLocaleLowerCase();
+    var members = window.paymentFormMembers || [];
+    var matches = members.filter(function(member) {
+        if (!query) return true;
+        return [member.full_name, member.member_code, member.id].some(function(value) {
+            return String(value || '').toLocaleLowerCase().indexOf(query) !== -1;
+        });
+    }).slice(0, 20);
+    if (!matches.length) {
+        results.innerHTML = '<div class="payment-member-picker__empty">عضوی با این نام یا شماره عضویت پیدا نشد.</div>';
+    } else {
+        results.innerHTML = matches.map(function(member) {
+            return '<button class="payment-member-picker__option" type="button" role="option" onclick="selectPaymentMember(' + Number(member.id) + ')"><strong>' + escapePaymentText(member.full_name || '-') + '</strong><small>' + escapePaymentText(member.member_code || ('ID ' + member.id)) + '</small></button>';
+        }).join('');
+    }
+    results.hidden = false;
+}
+
+function selectPaymentMember(memberId) {
+    var selected = getPaymentFormControl('pMember');
+    var search = getPaymentFormControl('pMemberSearch');
+    var selectedLabel = getPaymentFormControl('pMemberSelected');
+    var results = getPaymentFormControl('pMemberResults');
+    var member = (window.paymentFormMembers || []).find(function(item) { return String(item.id) === String(memberId); });
+    if (!selected || !search || !selectedLabel) return;
+    selected.value = member ? member.id : '';
+    if (member) {
+        search.value = member.full_name || '';
+        selectedLabel.innerHTML = '<i class="fas fa-circle-check"></i>' + escapePaymentText(member.full_name || '-') + ' — ' + escapePaymentText(member.member_code || ('ID ' + member.id));
+        selectedLabel.hidden = false;
+    } else {
+        search.value = '';
+        selectedLabel.textContent = '';
+        selectedLabel.hidden = true;
+    }
+    if (results) results.hidden = true;
 }
 
 function getPaymentFormControl(id) {

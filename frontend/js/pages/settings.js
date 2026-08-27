@@ -34,6 +34,21 @@ function changePassword() {
     });
 }
 
+function createPasswordRecoveryKey() {
+    var result = document.getElementById('recoveryKeyResult');
+    getBridge().create_password_recovery_key().then(function(response) {
+        if (!response || !response.success) {
+            showToast('خطا', (response && response.message) || 'ایجاد کلید بازیابی انجام نشد.', 'error');
+            return;
+        }
+        result.textContent = response.recovery_key;
+        result.hidden = false;
+        showToast('کلید بازیابی ایجاد شد', 'این کلید فقط اکنون نمایش داده می‌شود؛ آن را در جای امن ذخیره کنید.');
+    })['catch'](function(error) {
+        showToast('خطا', error.message || 'ایجاد کلید بازیابی انجام نشد.', 'error');
+    });
+}
+
 function saveSettings() {
     var gymName = document.getElementById('settingsGymName').value.trim();
     if (!gymName) {

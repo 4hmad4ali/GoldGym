@@ -18,6 +18,7 @@ import zipfile
 import threading
 import time
 import licensing
+from app_paths import ASSETS_DIR, USER_FILES_DIR, resource_path, user_data_path
 
 # ── For QR detection from images ──
 try:
@@ -37,27 +38,14 @@ if sys.platform == 'win32':
 
 def default_backup_directory():
     """Return a writable, per-user backup location outside the app install."""
-    app_name = 'Gym Management System'
-    if sys.platform == 'win32':
-        data_home = os.environ.get('LOCALAPPDATA') or os.path.expanduser('~\\AppData\\Local')
-    elif sys.platform == 'darwin':
-        data_home = os.path.expanduser('~/Library/Application Support')
-    else:
-        data_home = os.environ.get('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
-    return os.path.join(data_home, app_name, 'Backups')
+    return user_data_path('Backups')
 
 class GoldenGymBridge:
     def __init__(self):
         self.current_user = None
-        self.user_data_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "user_data"
-        )
-        self.assets_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "assets"
-        )
-        self.templates_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "frontend", "templates"
-        )
+        self.user_data_path = USER_FILES_DIR
+        self.assets_path = ASSETS_DIR
+        self.templates_path = resource_path("frontend", "templates")
         for folder in ['members', 'staff', 'coaches']:
             os.makedirs(os.path.join(self.user_data_path, folder), exist_ok=True)
         os.makedirs(self.assets_path, exist_ok=True)
@@ -87,6 +75,18 @@ class GoldenGymBridge:
     
     def change_password(self, username, new_password):
         return {'success': db.change_password(username, new_password)}
+
+    def create_password_recovery_key(self):
+        if not self.current_user or self.current_user.get('role') != 'admin':
+            return {'success': False, 'message': 'فقط مدیر سیستم می‌تواند کلید بازیابی ایجاد کند.'}
+        recovery_key = db.create_password_recovery_key(self.current_user['username'])
+        if not recovery_key:
+            return {'success': False, 'message': 'ایجاد کلید بازیابی انجام نشد.'}
+        db.add_activity('password_recovery_key_created', 'کلید بازیابی جدید ایجاد شد', 'حساب: ' + self.current_user['username'])
+        return {'success': True, 'recovery_key': recovery_key}
+
+    def reset_password_with_recovery_key(self, username, recovery_key, new_password):
+        return db.reset_password_with_recovery_key(username, recovery_key, new_password)
     
     def logout(self):
         self.current_user = None

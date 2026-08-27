@@ -4,10 +4,11 @@ Golden Gym Desktop — Main Application
 """
 import sys
 import os
+from app_paths import initialise_user_data, resource_path, user_data_path
 
 # Keep WebView temporary files in the project workspace, where this app has
 # write access, instead of an Anaconda-managed temp directory.
-APP_TEMP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "user_data", "temp")
+APP_TEMP = user_data_path("user_data", "temp")
 os.makedirs(APP_TEMP, exist_ok=True)
 os.environ["TEMP"] = APP_TEMP
 os.environ["TMP"] = APP_TEMP
@@ -48,14 +49,11 @@ MIN_HEIGHT = 750
 
 class GoldenGymApp:
     def __init__(self):
+        initialise_user_data()
         db.init_db()
         self.bridge = GoldenGymBridge()
         self.bridge.start_backup_scheduler()
-        self.frontend_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 
-            "frontend", 
-            "index.html"
-        )
+        self.frontend_path = resource_path("frontend", "index.html")
         if not os.path.exists(self.frontend_path):
             print(f"[ERROR] Frontend not found at: {self.frontend_path}")
             sys.exit(1)
