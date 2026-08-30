@@ -419,6 +419,29 @@ def get_members(search="", status="All", limit=500):
     conn.close()
     return rows
 
+def get_members_page(search="", status="All", page=1, per_page=20):
+    """Return one member directory page along with the filtered result count."""
+    conn = get_conn()
+    c = conn.cursor()
+    where = " WHERE 1=1"
+    params = []
+    if search:
+        where += " AND (full_name LIKE ? OR father_name LIKE ? OR member_code LIKE ? OR phone LIKE ? OR CAST(id AS TEXT) LIKE ?)"
+        params.extend([f"%{search}%"] * 5)
+    if status != "All":
+        where += " AND status=?"
+        params.append(status)
+
+    c.execute("SELECT COUNT(*) FROM members" + where, params)
+    total = c.fetchone()[0]
+    page = max(1, int(page or 1))
+    per_page = max(1, min(int(per_page or 20), 100))
+    offset = (page - 1) * per_page
+    c.execute("SELECT * FROM members" + where + " ORDER BY id DESC LIMIT ? OFFSET ?", params + [per_page, offset])
+    rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return {'members': rows, 'total': total, 'page': page, 'per_page': per_page}
+
 def get_member(mid):
     conn = get_conn()
     c = conn.cursor()
@@ -739,6 +762,37 @@ def get_payments(search="", date_from="", date_to=""):
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
     return rows
+
+def get_payments_page(search="", date_from="", date_to="", page=1, per_page=20):
+    """Return one newest-first payment page and the count matching its filters."""
+    conn = get_conn()
+    c = conn.cursor()
+    from_clause = """ FROM payments p
+        LEFT JOIN members m ON p.member_id = m.id
+        LEFT JOIN staff s ON p.staff_id = s.id
+        LEFT JOIN trainers t ON p.trainer_id = t.id"""
+    where = " WHERE 1=1"
+    params = []
+    if search:
+        where += " AND (m.full_name LIKE ? OR m.member_code LIKE ? OR s.full_name LIKE ? OR s.staff_code LIKE ? OR t.full_name LIKE ? OR t.trainer_code LIKE ? OR p.visitor_name LIKE ? OR p.receipt_number LIKE ?)"
+        params.extend([f"%{search}%"] * 8)
+    if date_from:
+        where += " AND date(p.payment_date) >= ?"
+        params.append(date_from)
+    if date_to:
+        where += " AND date(p.payment_date) <= ?"
+        params.append(date_to)
+
+    c.execute("SELECT COUNT(*)" + from_clause + where, params)
+    total = c.fetchone()[0]
+    page = max(1, int(page or 1))
+    per_page = max(1, min(int(per_page or 20), 100))
+    offset = (page - 1) * per_page
+    c.execute("""SELECT p.*, m.full_name as member_name, m.member_code,
+        s.full_name as staff_name, s.staff_code, t.full_name as trainer_name, t.trainer_code""" + from_clause + where + " ORDER BY p.payment_date DESC, p.id DESC LIMIT ? OFFSET ?", params + [per_page, offset])
+    rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return {'payments': rows, 'total': total, 'page': page, 'per_page': per_page}
 
 def get_payment(pid):
     conn = get_conn()

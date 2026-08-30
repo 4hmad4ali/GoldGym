@@ -13,5 +13,6 @@
     <section class="payments-directory">
         <div class="payments-directory__toolbar"><div><h2>تراکنش‌های ثبت‌شده</h2><p><span id="paymentsResultCount">0</span> تراکنش در این نمایش</p></div><div class="payments-filters"><label class="payments-search" for="paymentSearch"><i class="fas fa-magnifying-glass"></i><input type="search" class="form-control-gold" id="paymentSearch" placeholder="جستجو با نام، کد یا رسید..." oninput="filterPayments()"></label><button class="payments-clear-filter" type="button" onclick="clearPaymentFilter()" title="پاک کردن جستجو"><i class="fas fa-filter-circle-xmark"></i><span>پاک کردن</span></button></div></div>
         <div class="table-responsive payments-table-wrap"><table class="table-gold payments-table"><thead><tr><th>رسید</th><th>عضو</th><th>مبلغ پرداختی</th><th>روش پرداخت</th><th>تاریخ ثبت</th><th class="text-center">عملیات</th></tr></thead><tbody id="paymentsBody"></tbody></table></div>
+        <nav id="paymentsPagination" class="payments-pagination" aria-label="صفحه‌بندی فهرست پرداخت‌ها"></nav>
     </section>
 </div>

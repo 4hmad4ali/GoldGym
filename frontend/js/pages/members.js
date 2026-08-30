@@ -3,16 +3,28 @@
  * مدیریت اعضا
  */
 
+var MEMBERS_PER_PAGE = 20;
+var membersCurrentPage = 1;
+
 function renderMembers() {
     var search = document.getElementById('memberSearch') ? document.getElementById('memberSearch').value : '';
     var statusFilter = document.getElementById('memberStatusFilter') ? document.getElementById('memberStatusFilter').value : 'all';
     
     var bridge = getBridge();
-    bridge.get_members(search, statusFilter === 'all' ? 'All' : statusFilter).then(function(members) {
+    bridge.get_members_page(search, statusFilter === 'all' ? 'All' : statusFilter, membersCurrentPage, MEMBERS_PER_PAGE).then(function(result) {
+        var members = result.members || [];
+        var totalMembers = Number(result.total) || 0;
         var body = document.getElementById('membersBody');
         var resultCount = document.getElementById('membersResultCount');
         if (!body) return;
-        if (resultCount) resultCount.textContent = members.length;
+        if (resultCount) resultCount.textContent = totalMembers;
+
+        var totalPages = Math.max(1, Math.ceil(totalMembers / MEMBERS_PER_PAGE));
+        if (membersCurrentPage > totalPages) {
+            membersCurrentPage = totalPages;
+            renderMembers();
+            return;
+        }
         
         bridge.get_member_stats().then(function(stats) {
             setMemberMetric('memberStatTotal', stats.total);
@@ -22,8 +34,9 @@ function renderMembers() {
             setMemberMetric('memberStatFemale', stats.female);
         });
         
-        if (members.length === 0) {
+        if (totalMembers === 0) {
             body.innerHTML = '<tr><td colspan="7"><div class="member-empty"><span><i class="fas fa-users-slash"></i></span><strong>عضوی پیدا نشد</strong><p>جستجو یا فیلترها را تغییر دهید، یا یک عضو جدید اضافه کنید.</p><button class="btn-gold-small" type="button" onclick="openMemberModal()"><i class="fas fa-user-plus me-1"></i>افزودن عضو</button></div></td></tr>';
+            renderMembersPagination(0, 0);
             return;
         }
         
@@ -48,16 +61,44 @@ function renderMembers() {
                 '<button class="member-row-action is-danger" type="button" title="حذف عضو" onclick="deleteMember(' + m.id + ')"><i class="fas fa-trash"></i></button></div></td>' +
             '</tr>';
         }).join('');
+        renderMembersPagination(totalMembers, totalPages);
     })['catch'](function(e) { console.error(e); });
 }
 
-function filterMembers() { renderMembers(); }
+function filterMembers() {
+    membersCurrentPage = 1;
+    renderMembers();
+}
+
+function changeMembersPage(page) {
+    membersCurrentPage = page;
+    renderMembers();
+}
+
+function renderMembersPagination(totalMembers, totalPages) {
+    var pagination = document.getElementById('membersPagination');
+    if (!pagination) return;
+    if (totalMembers <= MEMBERS_PER_PAGE) {
+        pagination.innerHTML = '';
+        pagination.hidden = true;
+        return;
+    }
+
+    pagination.hidden = false;
+    var buttons = '<button class="member-pagination__button" type="button" onclick="changeMembersPage(' + (membersCurrentPage - 1) + ')" ' + (membersCurrentPage === 1 ? 'disabled' : '') + ' aria-label="صفحه قبل"><i class="fas fa-chevron-left"></i></button>';
+    for (var page = 1; page <= totalPages; page++) {
+        buttons += '<button class="member-pagination__button' + (page === membersCurrentPage ? ' is-active' : '') + '" type="button" onclick="changeMembersPage(' + page + ')" aria-label="صفحه ' + page + '" ' + (page === membersCurrentPage ? 'aria-current="page"' : '') + '>' + page + '</button>';
+    }
+    buttons += '<button class="member-pagination__button" type="button" onclick="changeMembersPage(' + (membersCurrentPage + 1) + ')" ' + (membersCurrentPage === totalPages ? 'disabled' : '') + ' aria-label="صفحه بعد"><i class="fas fa-chevron-right"></i></button>';
+    pagination.innerHTML = buttons + '<span class="member-pagination__summary">نمایش ' + ((membersCurrentPage - 1) * MEMBERS_PER_PAGE + 1) + ' تا ' + Math.min(membersCurrentPage * MEMBERS_PER_PAGE, totalMembers) + ' از ' + totalMembers + ' عضو</span>';
+}
 
 function clearMemberFilters() {
     var search = document.getElementById('memberSearch');
     var status = document.getElementById('memberStatusFilter');
     if (search) search.value = '';
     if (status) status.value = 'all';
+    membersCurrentPage = 1;
     renderMembers();
 }
 

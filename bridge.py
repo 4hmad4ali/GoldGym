@@ -163,6 +163,9 @@ class GoldenGymBridge:
     # ── MEMBERS     ─
     def get_members(self, search="", status="All"):
         return db.get_members(search, status)
+
+    def get_members_page(self, search="", status="All", page=1, per_page=20):
+        return db.get_members_page(search, status, page, per_page)
     
     def get_member(self, mid):
         return db.get_member(mid)
@@ -251,6 +254,12 @@ class GoldenGymBridge:
     # ── PAYMENTS     
     def get_payments(self, search="", date_from="", date_to=""):
         return db.get_payments(search, date_from, date_to)
+
+    def get_payments_page(self, search="", date_from="", date_to="", page=1, per_page=20):
+        return db.get_payments_page(search, date_from, date_to, page, per_page)
+
+    def get_payment(self, pid):
+        return db.get_payment(pid)
     
     def add_payment(self, data):
         try:

@@ -632,6 +632,11 @@
         .member-empty > span { width: 42px; height: 42px; display: grid; place-items: center; margin: 0 auto 10px; border-radius: 13px; color: var(--gg-text-subtle); background: var(--gg-surface-soft); }
         .member-empty strong { display: block; color: var(--gg-text); font-size: 13px; }
         .member-empty p { color: var(--gg-text-muted); font-size: 11px; margin: 7px 0 13px; }
+        .member-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 18px; border-top: 1px solid var(--gg-border); direction: ltr; }
+        .member-pagination__button { min-width: 30px; height: 30px; padding: 0 8px; border: 1px solid var(--gg-border); border-radius: 8px; background: transparent; color: var(--gg-text-muted); font: inherit; font-size: 11px; font-weight: 700; transition: .2s ease; }
+        .member-pagination__button:hover:not(:disabled), .member-pagination__button.is-active { border-color: var(--gg-accent); background: var(--gg-accent); color: var(--gg-on-accent); }
+        .member-pagination__button:disabled { cursor: not-allowed; opacity: .45; }
+        .member-pagination__summary { color: var(--gg-text-subtle); font-size: 10px; direction: rtl; margin: 0 5px; }
         @media (max-width: 1100px) { .member-overview { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 767px) {
             .member-page__header, .member-directory__toolbar { align-items: flex-start; flex-direction: column; }
@@ -640,6 +645,7 @@
             .member-filters { width: 100%; flex-wrap: wrap; }
             .member-search { width: 100%; }
             .member-filter-select { flex: 1; }
+            .member-pagination { flex-wrap: wrap; }
         }
 
         /* ─── Team workspace ─── */
@@ -879,8 +885,13 @@
         .payments-empty > span { width: 42px; height: 42px; display: grid; place-items: center; margin: 0 auto 10px; border-radius: 13px; color: var(--gg-text-subtle); background: var(--gg-surface-soft); }
         .payments-empty strong { display: block; color: var(--gg-text); font-size: 13px; }
         .payments-empty p { color: var(--gg-text-muted); font-size: 11px; margin: 7px 0 13px; }
+        .payments-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 18px; border-top: 1px solid var(--gg-border); direction: ltr; }
+        .payments-pagination__button { min-width: 30px; height: 30px; padding: 0 8px; border: 1px solid var(--gg-border); border-radius: 8px; background: transparent; color: var(--gg-text-muted); font: inherit; font-size: 11px; font-weight: 700; transition: .2s ease; }
+        .payments-pagination__button:hover:not(:disabled), .payments-pagination__button.is-active { border-color: var(--gg-accent); background: var(--gg-accent); color: var(--gg-on-accent); }
+        .payments-pagination__button:disabled { cursor: not-allowed; opacity: .45; }
+        .payments-pagination__summary { color: var(--gg-text-subtle); font-size: 10px; direction: rtl; margin: 0 5px; }
         @media (max-width: 900px) { .payments-overview { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 767px) { .payments-page__header, .payments-directory__toolbar { align-items: flex-start; flex-direction: column; } .payments-page__add { width: 100%; } .payments-search { width: min(300px, 72vw); } .payments-clear-filter span { display: none; } }
+        @media (max-width: 767px) { .payments-page__header, .payments-directory__toolbar { align-items: flex-start; flex-direction: column; } .payments-page__add { width: 100%; } .payments-search { width: min(300px, 72vw); } .payments-clear-filter span { display: none; } .payments-pagination { flex-wrap: wrap; } }
 
         /* ─── Attendance workspace ─── */
         .attendance-page { max-width: 1560px; margin: 0 auto; padding-top: 5px; }

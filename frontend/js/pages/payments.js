@@ -3,15 +3,26 @@
  * مدیریت پرداخت‌ها
  */
 
+var PAYMENTS_PER_PAGE = 20;
+var paymentsCurrentPage = 1;
+
 function renderPayments() {
     var search = document.getElementById('paymentSearch') ? document.getElementById('paymentSearch').value : '';
     
     var bridge = getBridge();
-    bridge.get_payments(search).then(function(payments) {
+    bridge.get_payments_page(search, '', '', paymentsCurrentPage, PAYMENTS_PER_PAGE).then(function(result) {
+        var payments = result.payments || [];
+        var totalPayments = Number(result.total) || 0;
         var body = document.getElementById('paymentsBody');
         var resultCount = document.getElementById('paymentsResultCount');
         if (!body) return;
-        if (resultCount) resultCount.textContent = payments.length;
+        if (resultCount) resultCount.textContent = totalPayments;
+        var totalPages = Math.max(1, Math.ceil(totalPayments / PAYMENTS_PER_PAGE));
+        if (paymentsCurrentPage > totalPages) {
+            paymentsCurrentPage = totalPages;
+            renderPayments();
+            return;
+        }
         
         bridge.get_payment_stats().then(function(stats) {
             setPaymentMetric('paymentStatDaily', stats.daily);
@@ -20,8 +31,9 @@ function renderPayments() {
             setPaymentMetric('paymentStatTotal', stats.total);
         });
         
-        if (payments.length === 0) {
+        if (totalPayments === 0) {
             body.innerHTML = '<tr><td colspan="6"><div class="payments-empty"><span><i class="fas fa-receipt"></i></span><strong>پرداختی پیدا نشد</strong><p>جستجو را تغییر دهید یا اولین تراکنش را ثبت کنید.</p><button class="btn-gold-small" type="button" onclick="openPaymentModal()"><i class="fas fa-plus me-1"></i>ثبت پرداخت</button></div></td></tr>';
+            renderPaymentsPagination(0, 0);
             return;
         }
         
@@ -39,14 +51,41 @@ function renderPayments() {
                 '<td><div class="payment-row-actions"><button class="payment-row-action is-primary" type="button" title="ویرایش پرداخت" onclick="editPayment(' + p.id + ')"><i class="fas fa-pen"></i></button><button class="payment-row-action is-danger" type="button" title="حذف پرداخت" onclick="deletePayment(' + p.id + ')"><i class="fas fa-trash"></i></button></div></td>' +
             '</tr>';
         }).join('');
+        renderPaymentsPagination(totalPayments, totalPages);
     })['catch'](function(e) { console.error(e); });
 }
 
-function filterPayments() { renderPayments(); }
+function filterPayments() {
+    paymentsCurrentPage = 1;
+    renderPayments();
+}
+
+function changePaymentsPage(page) {
+    paymentsCurrentPage = page;
+    renderPayments();
+}
+
+function renderPaymentsPagination(totalPayments, totalPages) {
+    var pagination = document.getElementById('paymentsPagination');
+    if (!pagination) return;
+    if (totalPayments <= PAYMENTS_PER_PAGE) {
+        pagination.innerHTML = '';
+        pagination.hidden = true;
+        return;
+    }
+    pagination.hidden = false;
+    var buttons = '<button class="payments-pagination__button" type="button" onclick="changePaymentsPage(' + (paymentsCurrentPage - 1) + ')" ' + (paymentsCurrentPage === 1 ? 'disabled' : '') + ' aria-label="صفحه قبل"><i class="fas fa-chevron-left"></i></button>';
+    for (var page = 1; page <= totalPages; page++) {
+        buttons += '<button class="payments-pagination__button' + (page === paymentsCurrentPage ? ' is-active' : '') + '" type="button" onclick="changePaymentsPage(' + page + ')" aria-label="صفحه ' + page + '" ' + (page === paymentsCurrentPage ? 'aria-current="page"' : '') + '>' + page + '</button>';
+    }
+    buttons += '<button class="payments-pagination__button" type="button" onclick="changePaymentsPage(' + (paymentsCurrentPage + 1) + ')" ' + (paymentsCurrentPage === totalPages ? 'disabled' : '') + ' aria-label="صفحه بعد"><i class="fas fa-chevron-right"></i></button>';
+    pagination.innerHTML = buttons + '<span class="payments-pagination__summary">نمایش ' + ((paymentsCurrentPage - 1) * PAYMENTS_PER_PAGE + 1) + ' تا ' + Math.min(paymentsCurrentPage * PAYMENTS_PER_PAGE, totalPayments) + ' از ' + totalPayments + ' تراکنش</span>';
+}
 
 function clearPaymentFilter() {
     var search = document.getElementById('paymentSearch');
     if (search) search.value = '';
+    paymentsCurrentPage = 1;
     renderPayments();
 }
 
@@ -93,8 +132,7 @@ function openPaymentModal(data) {
 
 function editPayment(id) {
     var bridge = getBridge();
-    bridge.get_payments().then(function(payments) {
-        var payment = payments.find(function(p) { return p.id === id; });
+    bridge.get_payment(id).then(function(payment) {
         if (payment) openPaymentModal(payment);
     });
 }
