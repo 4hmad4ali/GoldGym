@@ -315,6 +315,12 @@ class GoldenGymBridge:
     def get_expenses(self, search=""):
         return db.get_expenses(search)
 
+    def get_expenses_page(self, search="", page=1, per_page=20):
+        return db.get_expenses_page(search, page, per_page)
+
+    def get_expense(self, expense_id):
+        return db.get_expense(expense_id)
+
     def add_expense(self, data):
         try:
             expense_id = db.add_expense(data)

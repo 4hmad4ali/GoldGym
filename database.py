@@ -912,6 +912,29 @@ def get_expenses(search=""):
     conn.close()
     return [dict(row) for row in rows]
 
+def get_expenses_page(search="", page=1, per_page=20):
+    """Return one newest-first expense page with its matching result count."""
+    conn = get_conn()
+    from_clause = " FROM expenses e LEFT JOIN expense_categories c ON e.category_id = c.id"
+    where = " WHERE 1=1"
+    params = []
+    if search:
+        where += " AND (e.title LIKE ? OR e.notes LIKE ? OR c.name LIKE ?)"
+        params.extend([f"%{search}%"] * 3)
+    total = conn.execute("SELECT COUNT(*)" + from_clause + where, params).fetchone()[0]
+    page = max(1, int(page or 1))
+    per_page = max(1, min(int(per_page or 20), 100))
+    offset = (page - 1) * per_page
+    rows = conn.execute("SELECT e.*, c.name AS category_name" + from_clause + where + " ORDER BY e.expense_date DESC, e.id DESC LIMIT ? OFFSET ?", params + [per_page, offset]).fetchall()
+    conn.close()
+    return {'expenses': [dict(row) for row in rows], 'total': total, 'page': page, 'per_page': per_page}
+
+def get_expense(expense_id):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM expenses WHERE id=?", (expense_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def add_expense(data):
     conn = get_conn()
     cursor = conn.cursor()

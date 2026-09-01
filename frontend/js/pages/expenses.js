@@ -12,21 +12,42 @@ function loadExpenseCategories(selected) {
     });
 }
 
+var EXPENSES_PER_PAGE = 20;
+var expensesCurrentPage = 1;
+
 function renderExpenses() {
     var dateField = expenseControl('expenseDate');
     if (dateField && !dateField.value) { var today = new Date().toISOString().split('T')[0]; dateField.value = afghanDate(today); var isoField = expenseControl('expenseDateIso'); if (isoField) isoField.value = today; }
     var search = expenseControl('expenseSearch');
-    getBridge().get_expenses(search ? search.value : '').then(function(expenses) {
+    getBridge().get_expenses_page(search ? search.value : '', expensesCurrentPage, EXPENSES_PER_PAGE).then(function(result) {
+        var expenses = result.expenses || [];
+        var totalExpenses = Number(result.total) || 0;
         var body = expenseControl('expensesBody'); var count = expenseControl('expenseResultCount');
-        if (count) count.textContent = expenses.length;
-        if (body) body.innerHTML = expenses.length ? expenses.map(function(expense) { return '<tr><td><strong>' + escapeExpenseText(expense.title) + '</strong><small class="expense-row-note">' + escapeExpenseText(expense.notes || '') + '</small></td><td><span class="expense-category-chip is-static">' + escapeExpenseText(expense.category_name || 'بدون دسته‌بندی') + '</span></td><td><span class="payment-amount">' + Number(expense.amount || 0).toLocaleString() + '<small>AFN</small></span></td><td>' + escapeExpenseText(expense.payment_method || '-') + '</td><td>' + escapeExpenseText(afghanDate(expense.expense_date || '') || '-') + '</td><td><div class="payment-row-actions"><button class="payment-row-action is-primary" type="button" onclick="openExpenseForm(' + expense.id + ')" title="ویرایش"><i class="fas fa-pen"></i></button><button class="payment-row-action is-danger" type="button" onclick="deleteExpense(' + expense.id + ')" title="حذف"><i class="fas fa-trash"></i></button></div></td></tr>'; }).join('') : '<tr><td colspan="6"><div class="payments-empty"><span><i class="fas fa-receipt"></i></span><strong>هزینه‌ای ثبت نشده است</strong><p>اولین هزینه باشگاه را ثبت کنید.</p></div></td></tr>';
+        if (count) count.textContent = totalExpenses;
+        var totalPages = Math.max(1, Math.ceil(totalExpenses / EXPENSES_PER_PAGE));
+        if (expensesCurrentPage > totalPages) { expensesCurrentPage = totalPages; renderExpenses(); return; }
+        if (body) body.innerHTML = totalExpenses ? expenses.map(function(expense) { return '<tr><td><strong>' + escapeExpenseText(expense.title) + '</strong><small class="expense-row-note">' + escapeExpenseText(expense.notes || '') + '</small></td><td><span class="expense-category-chip is-static">' + escapeExpenseText(expense.category_name || 'بدون دسته‌بندی') + '</span></td><td><span class="payment-amount">' + Number(expense.amount || 0).toLocaleString() + '<small>AFN</small></span></td><td>' + escapeExpenseText(expense.payment_method || '-') + '</td><td>' + escapeExpenseText(afghanDate(expense.expense_date || '') || '-') + '</td><td><div class="payment-row-actions"><button class="payment-row-action is-primary" type="button" onclick="openExpenseForm(' + expense.id + ')" title="ویرایش"><i class="fas fa-pen"></i></button><button class="payment-row-action is-danger" type="button" onclick="deleteExpense(' + expense.id + ')" title="حذف"><i class="fas fa-trash"></i></button></div></td></tr>'; }).join('') : '<tr><td colspan="6"><div class="payments-empty"><span><i class="fas fa-receipt"></i></span><strong>هزینه‌ای ثبت نشده است</strong><p>اولین هزینه باشگاه را ثبت کنید.</p></div></td></tr>';
+        renderExpensesPagination(totalExpenses, totalPages);
     });
     getBridge().get_expense_stats().then(function(stats) { setExpenseMetric('expenseStatDaily', stats.daily); setExpenseMetric('expenseStatMonthly', stats.monthly); setExpenseMetric('expenseStatTotal', stats.total); });
     loadExpenseCategories();
 }
 
+function filterExpenses() { expensesCurrentPage = 1; renderExpenses(); }
+function changeExpensesPage(page) { expensesCurrentPage = page; renderExpenses(); }
+function renderExpensesPagination(totalExpenses, totalPages) {
+    var pagination = expenseControl('expensesPagination');
+    if (!pagination) return;
+    if (totalExpenses <= EXPENSES_PER_PAGE) { pagination.innerHTML = ''; pagination.hidden = true; return; }
+    pagination.hidden = false;
+    var buttons = '<button class="expenses-pagination__button" type="button" onclick="changeExpensesPage(' + (expensesCurrentPage - 1) + ')" ' + (expensesCurrentPage === 1 ? 'disabled' : '') + ' aria-label="صفحه قبل"><i class="fas fa-chevron-left"></i></button>';
+    for (var page = 1; page <= totalPages; page++) buttons += '<button class="expenses-pagination__button' + (page === expensesCurrentPage ? ' is-active' : '') + '" type="button" onclick="changeExpensesPage(' + page + ')" aria-label="صفحه ' + page + '" ' + (page === expensesCurrentPage ? 'aria-current="page"' : '') + '>' + page + '</button>';
+    buttons += '<button class="expenses-pagination__button" type="button" onclick="changeExpensesPage(' + (expensesCurrentPage + 1) + ')" ' + (expensesCurrentPage === totalPages ? 'disabled' : '') + ' aria-label="صفحه بعد"><i class="fas fa-chevron-right"></i></button>';
+    pagination.innerHTML = buttons + '<span class="expenses-pagination__summary">نمایش ' + ((expensesCurrentPage - 1) * EXPENSES_PER_PAGE + 1) + ' تا ' + Math.min(expensesCurrentPage * EXPENSES_PER_PAGE, totalExpenses) + ' از ' + totalExpenses + ' هزینه</span>';
+}
+
 function resetExpenseForm() { var form = expenseControl('expenseForm'); if (form) form.reset(); expenseControl('expenseEditId').value = ''; var today = new Date().toISOString().split('T')[0]; expenseControl('expenseDate').value = afghanDate(today); expenseControl('expenseDateIso').value = today; expenseControl('expenseFormTitle').textContent = 'ثبت هزینه جدید'; }
-function openExpenseForm(id) { resetExpenseForm(); if (!id) return; getBridge().get_expenses('').then(function(expenses) { var expense = expenses.find(function(item) { return item.id === id; }); if (!expense) return; expenseControl('expenseEditId').value = expense.id; expenseControl('expenseTitle').value = expense.title || ''; expenseControl('expenseAmount').value = expense.amount || ''; expenseControl('expenseDate').value = afghanDate(expense.expense_date || ''); expenseControl('expenseDateIso').value = expense.expense_date || ''; expenseControl('expenseMethod').value = expense.payment_method || 'نقدی'; expenseControl('expenseNotes').value = expense.notes || ''; expenseControl('expenseFormTitle').textContent = 'ویرایش هزینه'; loadExpenseCategories(expense.category_id); }); }
+function openExpenseForm(id) { resetExpenseForm(); if (!id) return; getBridge().get_expense(id).then(function(expense) { if (!expense) return; expenseControl('expenseEditId').value = expense.id; expenseControl('expenseTitle').value = expense.title || ''; expenseControl('expenseAmount').value = expense.amount || ''; expenseControl('expenseDate').value = afghanDate(expense.expense_date || ''); expenseControl('expenseDateIso').value = expense.expense_date || ''; expenseControl('expenseMethod').value = expense.payment_method || 'نقدی'; expenseControl('expenseNotes').value = expense.notes || ''; expenseControl('expenseFormTitle').textContent = 'ویرایش هزینه'; loadExpenseCategories(expense.category_id); }); }
 function saveExpense() { var id = expenseControl('expenseEditId').value; var data = { title: expenseControl('expenseTitle').value.trim(), category_id: expenseControl('expenseCategory').value || null, amount: parseFloat(expenseControl('expenseAmount').value), expense_date: expenseControl('expenseDateIso').value, payment_method: expenseControl('expenseMethod').value, notes: expenseControl('expenseNotes').value }; if (!data.title || !data.amount) { showToast('خطا', 'عنوان و مبلغ هزینه الزامی است', 'error'); return; } var call = id ? getBridge().update_expense(parseInt(id), data) : getBridge().add_expense(data); call.then(function(result) { if (!result.success) throw new Error(result.message || 'ذخیره انجام نشد'); resetExpenseForm(); renderExpenses(); updateDashboard(); showToast('موفق', id ? 'هزینه ویرایش شد' : 'هزینه ثبت شد'); })['catch'](function(error) { showToast('خطا', error.message, 'error'); }); }
 function addExpenseCategory() { var input = expenseControl('expenseCategoryName'); var name = input.value.trim(); if (!name) return; getBridge().add_expense_category(name).then(function(result) { if (!result.success) throw new Error(result.message || 'افزودن انجام نشد'); input.value = ''; loadExpenseCategories(); showToast('موفق', 'دسته‌بندی اضافه شد'); })['catch'](function(error) { showToast('خطا', error.message, 'error'); }); }
 function deleteExpenseCategory(id) { showDeleteConfirmation({ title: 'حذف دسته‌بندی', message: 'هزینه‌های قبلی حذف نمی‌شوند و فقط دسته‌بندی آن‌ها خالی می‌شود.', onConfirm: function() { getBridge().delete_expense_category(id).then(function() { renderExpenses(); }); } }); }

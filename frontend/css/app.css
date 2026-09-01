@@ -890,8 +890,13 @@
         .payments-pagination__button:hover:not(:disabled), .payments-pagination__button.is-active { border-color: var(--gg-accent); background: var(--gg-accent); color: var(--gg-on-accent); }
         .payments-pagination__button:disabled { cursor: not-allowed; opacity: .45; }
         .payments-pagination__summary { color: var(--gg-text-subtle); font-size: 10px; direction: rtl; margin: 0 5px; }
+        .expenses-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 18px; border-top: 1px solid var(--gg-border); direction: ltr; }
+        .expenses-pagination__button { min-width: 30px; height: 30px; padding: 0 8px; border: 1px solid var(--gg-border); border-radius: 8px; background: transparent; color: var(--gg-text-muted); font: inherit; font-size: 11px; font-weight: 700; transition: .2s ease; }
+        .expenses-pagination__button:hover:not(:disabled), .expenses-pagination__button.is-active { border-color: var(--gg-accent); background: var(--gg-accent); color: var(--gg-on-accent); }
+        .expenses-pagination__button:disabled { cursor: not-allowed; opacity: .45; }
+        .expenses-pagination__summary { color: var(--gg-text-subtle); font-size: 10px; direction: rtl; margin: 0 5px; }
         @media (max-width: 900px) { .payments-overview { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 767px) { .payments-page__header, .payments-directory__toolbar { align-items: flex-start; flex-direction: column; } .payments-page__add { width: 100%; } .payments-search { width: min(300px, 72vw); } .payments-clear-filter span { display: none; } .payments-pagination { flex-wrap: wrap; } }
+        @media (max-width: 767px) { .payments-page__header, .payments-directory__toolbar { align-items: flex-start; flex-direction: column; } .payments-page__add { width: 100%; } .payments-search { width: min(300px, 72vw); } .payments-clear-filter span { display: none; } .payments-pagination, .expenses-pagination { flex-wrap: wrap; } }
 
         /* ─── Attendance workspace ─── */
         .attendance-page { max-width: 1560px; margin: 0 auto; padding-top: 5px; }

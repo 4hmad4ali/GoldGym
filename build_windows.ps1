@@ -36,11 +36,19 @@ if ($LASTEXITCODE -ne 0) { throw 'Executable build failed.' }
 Write-Host "Built: $projectRoot\dist\Golden Gym\Golden Gym.exe"
 
 if ($Installer) {
-    $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-    if (-not $iscc) {
-        throw 'Inno Setup 6 is required to create the installer. Install it, then run: .\\build_windows.ps1 -Installer'
-    }
-    & $iscc.Source "$projectRoot\installer\GoldenGym.iss"
+    New-Item -ItemType Directory -Force -Path "$projectRoot\release" | Out-Null
+    & $python -m PyInstaller `
+        --noconfirm `
+        --clean `
+        --onefile `
+        --windowed `
+        --name 'GoldenGym-Setup' `
+        --add-data "$projectRoot\dist\Golden Gym;app" `
+        --hidden-import win32com.client `
+        --collect-all win32com `
+        --distpath "$projectRoot\release" `
+        --workpath "$projectRoot\build-installer" `
+        "$projectRoot\installer_bootstrap.py"
     if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
     Write-Host "Installer: $projectRoot\release\GoldenGym-Setup.exe"
 }

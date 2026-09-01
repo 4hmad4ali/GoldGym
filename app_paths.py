@@ -4,7 +4,7 @@ import shutil
 import sys
 
 
-APP_FOLDER_NAME = "Golden Gym"
+APP_FOLDER_NAME = "Gym Management System"
 SOURCE_ROOT = os.path.dirname(os.path.abspath(__file__))
 RESOURCE_ROOT = getattr(sys, "_MEIPASS", SOURCE_ROOT)
 
@@ -40,7 +40,7 @@ def initialise_user_data():
     ):
         os.makedirs(directory, exist_ok=True)
 
-    # The customer may replace their logo/signature. Never overwrite it on an
+
     # upgrade; only supply the bundled defaults when no local copy exists.
     for filename in ("logo.png", "signature.png"):
         source = resource_path("assets", filename)
